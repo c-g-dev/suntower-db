@@ -9,7 +9,7 @@
   <p align="center">
     Plugin-centric reimplementation of CastleDB.
     <br />
-    <a href="http:/www.suntowerdb.com"><strong>Now available as a webapp!</strong></a>
+    <a href="http:/www.suntowerdb.com"><strong>Now available in the browser!</strong></a>
     <br />
     <br />
   </p>
