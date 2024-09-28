@@ -1,15 +1,19 @@
-<div style="display: flex; align-items: center;">
-    <img src="image.png" alt="CastleDB - Suntower Edition" style="margin-right: 20px;"/>
-    <div style="font-size: 48px; text-decoration: none;">CastleDB - Suntower Edition</div>
+<br />
+<div align="center">
+  <a href="https://github.com/othneildrew/Best-README-Template">
+    <img src="image.png" alt="Logo">
+  </a>
+
+  <h3 align="center">CastleDB - Suntower Edition</h3>
+
+  <p align="center">
+    Plugin-centric reimplementation of CastleDB.
+    <br />
+    <a href="www.suntowerdb.com"><strong>Now available as a webapp!</strong></a>
+    <br />
+    <br />
+  </p>
 </div>
-
----
-<br/>
-
-Plugin-centric reimplementation of CastleDB.
-
-[Now available as a webapp!](www.suntowerdb.com)
-
 
 
 Docs under construction...
