@@ -28,7 +28,7 @@ class Database {
 
 	var smap : Map<String, Sheet>;
 	var tmap : Map<String, CustomType>;
-	var data : data.Data;
+	public var data : data.Data;
 
 	public var sheets(default, null) : Array<Sheet>;
 	public var compress(get, set) : Bool;
@@ -52,10 +52,10 @@ class Database {
 			return b;
 		data.compress = b;
 		for( s in sheets )
-			for( c in s.columns )
+			for( c in s.getColumns() )
 				switch( c.type ) {
 				case TLayer(_):
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var ldat : Layer<Int> = Reflect.field(obj, c.name);
 						if( ldat == null || ldat == cast "" ) continue;
 						var d = ldat.decode([for( i in 0...256 ) i]);
@@ -63,7 +63,7 @@ class Database {
 						Reflect.setField(obj, c.name, ldat);
 					}
 				case TTileLayer:
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var ldat : data.Types.TileLayer = Reflect.field(obj, c.name);
 						if( ldat == null || ldat == cast "" ) continue;
 						var d = ldat.data.decode();
@@ -85,7 +85,7 @@ class Database {
 	public function createSheet( name : String, sheetType: String, ?index : Int ) {
 		// name already exists
 		for( s in sheets )
-			if( s.name == name )
+			if( s.getName() == name )
 				return null;
 		var s : data.Data.SheetData = {
 			sheetType: sheetType,
@@ -100,7 +100,7 @@ class Database {
 	}
 
 	public function moveSheet( s : Sheet, delta : Int ) {
-		var fsheets = [for( s in sheets ) if( !s.props.hide ) s];
+		var fsheets = [for( s in sheets ) if( !s.getProps().hide ) s];
 		var index = fsheets.indexOf(s);
 		var other = fsheets[index+delta];
 		if( index < 0 || other == null ) return false;
@@ -144,7 +144,7 @@ class Database {
 	public function createSubSheet( parent : Sheet, c : Column ) {
 		var s : data.Data.SheetData = {
 			sheetType: SheetTypes.DATA_TABLE,
-			name : parent.name + "@" + c.name,
+			name : parent.getName() + "@" + c.name,
 			props : { hide : true },
 			separators : [],
 			lines : [],
@@ -152,8 +152,8 @@ class Database {
 		};
 		if( c.type == TProperties ) s.props.isProps = true;
 		// our parent might be a virtual sheet
-		var index = data.sheets.indexOf(Lambda.find(data.sheets, function(s) return s.name == parent.name));
-		for( c2 in parent.columns ) {
+		var index = data.sheets.indexOf(Lambda.find(data.sheets, function(s) return s.name == parent.getName()));
+		for( c2 in parent.getColumns() ) {
 			if( c == c2 ) break;
 			if( c2.type.match(TProperties|TList) ) {
 				var sub = parent.getSub(c2);
@@ -204,9 +204,9 @@ class Database {
 		}];
 		#if cdb_old_compat
 		for( s in sheets )
-			if( s.props.hasIndex ) {
+			if( s.getProps().hasIndex ) {
 				// delete old index data, if present
-				var lines = s.getLines();
+				var lines = s.getScopedLines();
 				for( i in 0...lines.length )
 					Reflect.deleteField(lines[i],"index");
 			}
@@ -221,15 +221,15 @@ class Database {
 	function cleanLayers() {
 		var count = 0;
 		for( s in sheets ) {
-			if( s.props.level == null ) continue;
-			var ts = s.props.level.tileSets;
+			if( s.getProps().level == null ) continue;
+			var ts = s.getProps().level.tileSets;
 			var usedLayers = new Map();
-			for( c in s.columns ) {
+			for( c in s.getColumns() ) {
 				switch( c.type ) {
 				case TList:
 					var sub = s.getSub(c);
 					if( !sub.hasColumn("data", [TTileLayer]) ) continue;
-					for( obj in sub.getLines() ) {
+					for( obj in sub.getScopedLines() ) {
 						var v : data.Types.TileLayer = obj.data;
 						if( v == null || v.file == null ) continue;
 						usedLayers.set(v.file, true);
@@ -250,15 +250,15 @@ class Database {
 		// process
 		for( s in sheets ) {
 			// clean props
-			if( s.props.hasGroup ) {
-				var lines = s.getLines();
+			if( s.getProps().hasGroup ) {
+				var lines = s.getScopedLines();
 				for( l in lines )
 					if( l.group != null )
 						Reflect.deleteField(l,"group");
 			}
-			for( p in Reflect.fields(s.props) ) {
-				var v : Dynamic = Reflect.field(s.props, p);
-				if( v == null || v == false ) Reflect.deleteField(s.props, p);
+			for( p in Reflect.fields(s.getProps()) ) {
+				var v : Dynamic = Reflect.field(s.getProps(), p);
+				if( v == null || v == false ) Reflect.deleteField(s.getProps(), p);
 			}
 		}
 		return Parser.save(data);
@@ -272,10 +272,10 @@ class Database {
 		case TString, TId, TImage, TLayer(_), TFile: "";
 		case TRef(s):
 			var s = getSheet(s);
-			var l = s.lines[0];
+			var l = s.getLines()[0];
 			var id = "";
 			if( l != null )
-				for( c in s.columns )
+				for( c in s.getColumns() )
 					if( c.type == TId ) {
 						id = Reflect.field(l, c.name);
 						break;
@@ -287,7 +287,7 @@ class Database {
 			var obj = {};
 			if( sheet != null ) {
 				var s = sheet.getSub(c);
-				for( c in s.columns )
+				for( c in s.getColumns() )
 					if( !c.opt ) {
 						var def = getDefault(c, s);
 						if( def != null ) Reflect.setField(obj, c.name, def);
@@ -308,15 +308,15 @@ class Database {
 	public function updateColumn( sheet : Sheet, old : Column, c : Column ) {
 		if( old.name != c.name ) {
 
-			for( c2 in sheet.columns )
+			for( c2 in sheet.getColumns() )
 				if( c2.name == c.name )
 					return "Column name already used";
-			if( c.name == "index" && sheet.props.hasIndex )
+			if( c.name == "index" && sheet.getProps().hasIndex )
 				return "Sheet already has an index";
-			if( c.name == "group" && sheet.props.hasGroup )
+			if( c.name == "group" && sheet.getProps().hasGroup )
 				return "Sheet already has a group";
 
-			for( o in sheet.getLines() ) {
+			for( o in sheet.getScopedLines() ) {
 				var v = Reflect.field(o, old.name);
 				Reflect.deleteField(o, old.name);
 				if( v != null )
@@ -326,10 +326,10 @@ class Database {
 			function renameRec(sheet:Sheet, col, newName) {
 				var s = sheet.getSub(col);
 				renames.push(function() {
-					s.rename(sheet.name + "@" + newName);
+					s.rename(sheet.getName() + "@" + newName);
 					s.sync();
 				});
-				for( c in s.columns )
+				for( c in s.getColumns() )
 					if( c.type == TList || c.type == TProperties )
 						renameRec(s, c, c.name);
 			}
@@ -346,7 +346,7 @@ class Database {
 				return "Cannot convert " + typeStr(old.type) + " to " + typeStr(c.type);
 			var conv = conv.f;
 			if( conv != null )
-				for( o in sheet.getLines() ) {
+				for( o in sheet.getScopedLines() ) {
 					var v = Reflect.field(o, c.name);
 					if( v != null ) {
 						v = conv(v);
@@ -355,9 +355,9 @@ class Database {
 				}
 			switch( [old.type, c.type] ) {
 				case [TList, TProperties]:
-					sheet.getSub(old).props.isProps = true;
+					sheet.getSub(old).getProps().isProps = true;
 				case [TProperties, TList]:
-					sheet.getSub(old).props.isProps = false;
+					sheet.getSub(old).getProps().isProps = false;
 				default:
 			}
 
@@ -367,7 +367,7 @@ class Database {
 
 		if( old.opt != c.opt ) {
 			if( old.opt ) {
-				for( o in sheet.getLines() ) {
+				for( o in sheet.getScopedLines() ) {
 					var v = Reflect.field(o, c.name);
 					if( v == null ) {
 						v = getDefault(c, sheet);
@@ -380,7 +380,7 @@ class Database {
 					// first choice should not be removed
 				default:
 					var def = getDefault(old, sheet);
-					for( o in sheet.getLines() ) {
+					for( o in sheet.getScopedLines() ) {
 						var v = Reflect.field(o, c.name);
 						switch( c.type ) {
 						case TList:
@@ -597,11 +597,11 @@ class Database {
 
 		// apply convert
 		for( s in sheets )
-			for( c in s.columns )
+			for( c in s.getColumns() )
 				switch( c.type ) {
 				case TCustom(tname):
 					var t2 = getCustomType(tname);
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var v = Reflect.field(obj, c.name);
 						if( v != null ) {
 							v = convertTypeRec(t2, v);
@@ -964,7 +964,7 @@ class Database {
 
 	public function mapType( callb ) {
 		for( s in sheets )
-			for( c in s.columns ) {
+			for( c in s.getColumns() ) {
 				var t = callb(c.type);
 				if( t != c.type ) {
 					c.type = t;
@@ -988,7 +988,7 @@ class Database {
 			var v : Dynamic = o[i + 1];
 			if( v == null ) continue;
 			switch( c.args[i].type ) {
-			case TRef(n) if( n == sheet.name ):
+			case TRef(n) if( n == sheet.getName() ):
 				var v = refMap.get(v);
 				if( v == null ) continue;
 				o[i + 1] = v;
@@ -1004,11 +1004,11 @@ class Database {
 	}
 
 	public function updateLocalRefs( sheet : Sheet, refMap : Map<String, String>, obj : Dynamic, objSheet : Sheet ) {
-		for( c in objSheet.columns ) {
+		for( c in objSheet.getColumns() ) {
 			var v : Dynamic = Reflect.field(obj, c.name);
 			if( v == null ) continue;
 			switch( c.type ) {
-			case TRef(n) if( n == sheet.name ):
+			case TRef(n) if( n == sheet.getName() ):
 				v = refMap.get(v);
 				if( v == null ) continue;
 				Reflect.setField(obj, c.name, v);
@@ -1021,7 +1021,7 @@ class Database {
 			case TProperties:
 				updateLocalRefs(sheet, refMap, v, objSheet.getSub(c));
 			case TString if( c.kind == Script ):
-				var prefix = sheet.name.split("@").pop();
+				var prefix = sheet.getName().split("@").pop();
 				prefix = prefix.charAt(0).toUpperCase() + prefix.substr(1);
 				for( oldId => newId in refMap )
 					if( oldId != "" && newId != "" )
@@ -1034,10 +1034,10 @@ class Database {
 
 	public function updateRefs( sheet : Sheet, refMap : Map<String, String> ) {
 		for( s in sheets )
-			for( c in s.columns )
+			for( c in s.getColumns() )
 				switch( c.type ) {
-				case TRef(n) if( n == sheet.name ):
-					for( obj in s.getLines() ) {
+				case TRef(n) if( n == sheet.getName() ):
+					for( obj in s.getScopedLines() ) {
 						var id = Reflect.field(obj, c.name);
 						if( id == null ) continue;
 						id = refMap.get(id);
@@ -1045,15 +1045,15 @@ class Database {
 						Reflect.setField(obj, c.name, id);
 					}
 				case TCustom(t):
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var o = Reflect.field(obj, c.name);
 						if( o == null ) continue;
 						convertTypeRec(sheet, refMap, getCustomType(t), o);
 					}
 				case TString if( c.kind == Script ):
-					var prefix = sheet.name.split("@").pop();
+					var prefix = sheet.getName().split("@").pop();
 					prefix = prefix.charAt(0).toUpperCase() + prefix.substr(1);
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var v : String = Reflect.field(obj, c.name);
 						if( v != null ) {
 							for( oldId => newId in refMap )
@@ -1075,8 +1075,8 @@ class Database {
 		if(removeData){
 			updateSheets();
 		}
-		smap.remove(sheet.name);
-		for( c in sheet.columns )
+		smap.remove(sheet.getName());
+		for( c in sheet.getColumns() )
 			switch( c.type ) {
 			case TList, TProperties:
 				deleteSheet(sheet.getSub(c), removeData);
@@ -1084,17 +1084,24 @@ class Database {
 			}
 		mapType(function(t) {
 			return switch( t ) {
-			case TRef(r), TLayer(r) if( r == sheet.name ): TString;
+			case TRef(r), TLayer(r) if( r == sheet.getName() ): TString;
 			default: t;
 			}
 		});
 	}
 
 	public function syncbackData() {
+		var storeSheets = [
+			for (eachSheet in data.sheets) {
+				eachSheet;
+			}
+		];
 		for( s in sheets ){
-			//deleteSheet(s, false);
-			deleteSheet(s, false);
+			deleteSheet(s, true);
 		}
+		sheets = [];
+		smap = [];
+		data.sheets = storeSheets;
 		for( s in data.sheets ){
 			var sobj = new Sheet(this, s);
 			sobj.sync();

@@ -22,7 +22,7 @@ class LevelUtils {
 	public function getLevels():Array<Dynamic> {
 		for (sheet in base.sheets) {
 			if (sheet.isLevel()) {
-				return [sheet.lines];
+				return [sheet.getLines()];
 			}
 		}
 		return [];

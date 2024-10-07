@@ -35,12 +35,12 @@ class SqlEngine {
     function extractTableName(fromClause: FromClause): String {
         switch (fromClause) {
             case Table(table): return table;
-            case _: return ""; // Add more logic if needed to handle other FromClause types
+            case _: return ""; 
         }
     }
 
-    function createWhereFunction(whereClause: Array<Condition>): Dynamic -> Bool {
-        return function(line: Dynamic): Bool {
+    function createWhereFunction(whereClause: Array<Condition>): (Dynamic, Int) -> Bool {
+        return function(line: Dynamic, idx: Int): Bool {
             for (condition in whereClause) {
                 if (!evaluateCondition(line, condition)) {
                     return false;
@@ -99,7 +99,7 @@ class SqlEngine {
                 for (alter in alters) {
                     switch (alter) {
                         case RenameTo(name): {
-                            // Handle table rename if your storage supports it.
+                            
                         }
                         case AddColumn(name, type): {
                             querier.addColumn(table, name, convertType(type));
@@ -108,10 +108,10 @@ class SqlEngine {
                             querier.dropColumn(table, name);
                         }
                         case ModifyColumn(name, type): {
-                            // Handle column modification if your storage supports it.
+                            
                         }
                         case RenameColumn(oldName, newName): {
-                            // Handle column rename if your storage supports it.
+                            
                         }
                     }
                 }

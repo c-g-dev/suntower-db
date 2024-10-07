@@ -49,16 +49,16 @@ class LayerGfx {
 		}
 		var idCol = null;
 		var imageTags = [];
-		for( c in sheet.columns )
+		for( c in sheet.getColumns() )
 			switch( c.type ) {
 			case TColor:
-				colors = [for( o in sheet.lines ) { var c = Reflect.field(o, c.name); c == null ? 0 : c; } ];
+				colors = [for( o in sheet.getLines() ) { var c = Reflect.field(o, c.name); c == null ? 0 : c; } ];
 			case TImage:
 				if( images == null ) images = [];
 				var size = level.tileSize;
-				for( idx in 0...sheet.lines.length ) {
+				for( idx in 0...sheet.getLines().length ) {
 					if( imageTags[idx] ) continue;
-					var key = Reflect.field(sheet.lines[idx], c.name);
+					var key = Reflect.field(sheet.getLines()[idx], c.name);
 					var idat = level.model.getImageData(key);
 					if( idat == null ) {
 						var i = new Image(size, size);
@@ -79,9 +79,9 @@ class LayerGfx {
 
 				var size = level.tileSize;
 
-				for( idx in 0...sheet.lines.length ) {
+				for( idx in 0...sheet.getLines().length ) {
 					if( imageTags[idx] ) continue;
-					var data : data.Types.TilePos = Reflect.field(sheet.lines[idx], c.name);
+					var data : data.Types.TilePos = Reflect.field(sheet.getLines()[idx], c.name);
 					if( data == null && images[idx] != null ) continue;
 					if( data == null ) {
 						var i = new Image(size, size);
@@ -105,13 +105,13 @@ class LayerGfx {
 			default:
 			}
 		names = [];
-		stride = Math.ceil(Math.sqrt(sheet.lines.length));
-		height = Math.ceil(sheet.lines.length / stride);
+		stride = Math.ceil(Math.sqrt(sheet.getLines().length));
+		height = Math.ceil(sheet.getLines().length / stride);
 		idToIndex = new Map();
 		indexToId = [];
-		for( index in 0...sheet.lines.length ) {
-			var o = sheet.lines[index];
-			var n = if( sheet.props.displayColumn != null ) Reflect.field(o, sheet.props.displayColumn) else null;
+		for( index in 0...sheet.getLines().length ) {
+			var o = sheet.getLines()[index];
+			var n = if( sheet.getProps().displayColumn != null ) Reflect.field(o, sheet.getProps().displayColumn) else null;
 			if( (n == null || n == "") && idCol != null )
 				n = Reflect.field(o, idCol.name);
 			if( n == null || n == "" )

@@ -16,7 +16,7 @@ class ContextMenuManager {
 
             var ctx = {
                 sheet: sheet,
-                row: sheet.lines[idx],
+                row: sheet.getLines()[idx],
                 rowIndex: idx,
                 model: model
             };

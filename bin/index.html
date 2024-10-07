@@ -30,10 +30,8 @@
 				<p>
 					<span>Sheet Type</span>
 					<select class="value" id="sheet_type">
-						<option value="data_table">Data Table</option>
-						<option value="level">Level</option>
-						<option value="gui">GUI</option>
-						<option value="vnchar">VN Char</option>
+						<option class="built_in_sheet_type" value="data_table">Data Table</option>
+						<option class="built_in_sheet_type" value="level">Level</option>
 					</select>
 				</p>
 				<p class="buttons">
@@ -142,13 +140,13 @@
 		<div class="content">
 		<h1>About</h1>
 		<p>
-			Version 1.6.1+
+			Version: ST-Desktop 1.0.0
 		</p>
 		<p>
-			CastleDB has been created by Nicolas Cannasse
+			Legacy CastleDB created by Nicolas Cannasse. Original project replaced by <a href="https://github.com/HeapsIO/hide" target="_blank">HIDE</a>.
 		</p>
 		<p>
-			Built and maintained here: <a href="https://github.com/dazKind/castle" target="_blank">https://github.com/dazKind/castle</a>
+			SuntowerDB is an actively maintained reimplementation of the original CastleDB with a focus on componitization. Check the source <a href="https://github.com/c-g-dev/suntower-db" target="_blank">here</a>.
 		</p>
 		<p>
 			<input type="submit" value="Close" onclick="$(this).parents('.modal').hide()"/>
@@ -232,7 +230,6 @@
 					<div class="opt tile">
 						<div class="icon random" onclick="_.level.paletteOption('random')" title="Random mode"></div>
 						<div class="icon paint" onclick="_.level.paletteOption('paint')" title="Paint mode"></div>
-						<div class="icon gridFill" onclick="_.level.paletteOption('gridFill')" title="Fill grid cell"></div>
 						<div class="icon small" onclick="_.level.paletteOption('small')" title="Reduce"></div>
 						<div class="icon zoomIn" onclick="_.level.paletteOption('zoomIn')" title="Zoom In"></div>
 						<div class="icon zoomOut" onclick="_.level.paletteOption('zoomOut')" title="Zoom Out"></div>
@@ -354,12 +351,6 @@
 				<div class="item">
 					<label>Value <input type="text" class="small" name="scale"/></label>
 					<input type="submit" value="Scale" onclick="_.level.scale(parseFloat($(parentNode).find('[name=scale]').val()))"/>
-				</div>
-				<div class="item">
-					<label>Show Grid <input type="checkbox" name="showGrid" onchange="_.level.toggleGrid(this.checked)"/></label>
-				</div>
-				<div class="item">
-					<label>Select Visible <input type="checkbox" name="selectVisible" onchange="_.level.toggleSelectVisible(this.checked)"/></label>
 				</div>
 				<div class="item">
 					<input type="submit" value="Cancel" onclick="_.level.action('options')"/>

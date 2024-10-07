@@ -22,6 +22,7 @@
 
 package crowplexus.hscript;
 
+import haxe.EnumTools.EnumValueTools;
 import crowplexus.iris.Iris;
 import crowplexus.hscript.proxy.ProxyType;
 import haxe.PosInfos;
@@ -715,11 +716,38 @@ class Interp {
 				var val: Dynamic = expr(e);
 				var match = false;
 				for (c in cases) {
-					for (v in c.values)
-						if ((!Type.enumEq(Tools.expr(v), EIdent("_")) && expr(v) == val) && (c.ifExpr == null || expr(c.ifExpr) == true)) {
+					for (v in c.values){
+						switch v {
+							case ECall(EField(EIdent(enumName), enumInstanceName, _), params): {
+								var toRemove: Array<Expr> = [];
+								for (expr in params) {
+									switch expr {
+										case EIdent("_"): {
+											toRemove.push(expr);
+										}
+										default:
+									}
+								}
+								for (expr in toRemove) {
+									params.remove(expr);
+								}
+								trace("enumInstanceName: " + enumInstanceName);
+								trace("Reflect.isEnumValue(val): " + Reflect.isEnumValue(val));
+								trace("EnumValueTools.getName(val): " + EnumValueTools.getName(val));
+								if(Reflect.isEnumValue(val) && (enumInstanceName == EnumValueTools.getName(val))) {
+									match = true;
+								}
+							}
+							default:
+						}
+						if (match){
+							break;
+						}
+						if (!match && (!Type.enumEq(Tools.expr(v), EIdent("_")) && expr(v) == val) && (c.ifExpr == null || expr(c.ifExpr) == true)) {
 							match = true;
 							break;
 						}
+					}
 					if (match) {
 						val = expr(c.expr);
 						break;

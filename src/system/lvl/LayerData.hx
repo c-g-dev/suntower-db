@@ -84,7 +84,7 @@ class LayerData extends LayerGfx {
 		// look for default color
 		if (sheet == null && props.color == null) {
 			props.color = 0xFF0000;
-			for (o in level.sheet.lines) {
+			for (o in level.sheet.getLines()) {
 				var props:data.Data.LevelProps = o.props;
 				if (props == null)
 					continue;
@@ -134,7 +134,7 @@ class LayerData extends LayerGfx {
 				throw "Invalid layer data";
 			data = Layer([for (i in 0...level.width * level.height) a.get(i)]);
 		}
-		if (sheet.lines.length > 256)
+		if (sheet.getLines().length > 256)
 			throw "Too many lines";
 	}
 

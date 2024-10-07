@@ -1,6 +1,7 @@
 -cp libs
 -cp src
 -cp plugins
+-cp test
 
 -js bin/test.js
 -main test.TestSQL

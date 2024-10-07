@@ -15,7 +15,11 @@ package system.lvl;
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
- import plugin.util.LevelPluginUtils.EditPropsUtil;
+ import plugin.Plugin.LevelPluginTrigger;
+import ludi.commons.util.View;
+import plugin.Plugin.LevelPlugin;
+import plugin.Plugin.Plugins;
+import plugin.util.LevelPluginUtils.EditPropsUtil;
  import plugin.util.LevelPluginUtils.LevelObjectScriptUtil;
  import util.LevelTools;
  //import plugin.kinds.EditProps_LevelObjectPlugin.EditPropsUtil;
@@ -66,7 +70,7 @@ package system.lvl;
 	 public var palette : Palette;
  
 	 var obj : Dynamic;
-	 var content : JQuery;
+	 public var content : JQuery;
 	 var props : LevelProps;
  
 	 public var currentLayer : LayerData;
@@ -81,7 +85,7 @@ package system.lvl;
 	 var waitCount : Int;
 	 var mouseCapture(default,set) : JQuery;
  
-	 var view : Image3D;
+	 public var view : Image3D;
  
 	 var mousePos = { x : 0, y : 0 };
 	 var startPos : { x : Int, y : Int, xf : Float, yf : Float } = null;
@@ -102,7 +106,7 @@ package system.lvl;
 		 this.sheet = sheet;
 		 this.sheetPath = sheet.getPath();
 		 this.index = index;
-		 this.obj = sheet.lines[index];
+		 this.obj = sheet.getLines()[index];
 		 this.model = model;
 		 references = [];
 		 palette = new Palette(this);
@@ -111,10 +115,10 @@ package system.lvl;
 	 public function getName() {
 		 var name = "#"+index;
 		 @:privateAccess if(sheet.sheet != null){
-			 for( c in sheet.columns ) {
+			 for( c in sheet.getColumns() ) {
 				 var v : Dynamic = Reflect.field(obj, c.name);
 				 switch( c.type ) {
-				 case TString | TRef(_) if( c.name == sheet.props.displayColumn && v != null && v != "" ):
+				 case TString | TRef(_) if( c.name == sheet.getProps().displayColumn && v != null && v != "" ):
 					 return v+"#"+index;
 				 case TId:
 					 name = v;
@@ -140,15 +144,7 @@ package system.lvl;
 		 return e;
 	 }
  
-	 public function addDynamicUIControls() {
-		 var optionsBar = content.find(".submenu.options");
-		 var exportButtonHTML = '<div class="item">
-					 <input type="submit" value="Export PNG" onclick="_.level.action(\'exportPNG\')"/>
-				 </div>';
-		 var exportButton = J(exportButtonHTML);
-		 optionsBar.append(exportButton);
-	 }
- 
+	
 	 public function init() {
 		 layers = [];
 		 watchList = [];
@@ -187,7 +183,7 @@ package system.lvl;
 		 waitCount = 1;
  
 		 var title = "";
-		 for( c in sheet.columns ) {
+		 for( c in sheet.getColumns() ) {
 			 var val : Dynamic = Reflect.field(obj, c.name);
 			 switch( c.name ) {
 			 case "width": width = val;
@@ -207,7 +203,7 @@ package system.lvl;
 				 var floatCoord = false;
 				 if( (sheet.hasColumn("x", [TInt]) && sheet.hasColumn("y", [TInt])) || (floatCoord = true && sheet.hasColumn("x", [TFloat]) && sheet.hasColumn("y", [TFloat])) ) {
 					 var sid = null, idCol = null;
-					 for( cid in sheet.columns )
+					 for( cid in sheet.getColumns() )
 						 switch( cid.type ) {
 						 case TRef(rid):
 							 sid = model.getSheet(rid);
@@ -244,8 +240,8 @@ package system.lvl;
 		 // cleanup unused
 		 for( c in lprops ) props.layers.remove(c);
  
-		 if( sheet.props.displayColumn != null ) {
-			 var t = Reflect.field(obj, sheet.props.displayColumn);
+		 if( sheet.getProps().displayColumn != null ) {
+			 var t = Reflect.field(obj, sheet.getProps().displayColumn);
 			 if( t != null ) title = t;
 		 }
  
@@ -496,6 +492,22 @@ package system.lvl;
 		 }
 		 return null;
 	 }
+
+	 function setTilesetPath(path: String) {
+		switch( currentLayer.data ) {
+			case Tiles(t, _), TileInstances(t, _):
+				if( t.file == null ) {
+					var size = this.props.tileSize;
+					t.stride = Std.int(t.size * t.stride / size);
+					t.size = size;
+				}
+				t.file = path;
+				currentLayer.dirty = true;
+				save();
+				reload();
+			default:
+		}
+	 }
  
 	 @:keep function action(name, ?val:Dynamic) {
 		 var l = currentLayer;
@@ -504,6 +516,7 @@ package system.lvl;
 			 if(currentContext != null) {
 				 currentContext.cleanup();
 			 }
+			 triggerEvent(LevelClose(this));
 			 cast(model, Main).closeLevel(this);
 		 case 'options':
 			 var opt = content.find(".submenu.options");
@@ -529,19 +542,7 @@ package system.lvl;
 		 case 'file':
 			 var m = cast(model, Main);
 			 m.chooseFile(function(path) {
-				 switch( currentLayer.data ) {
-				 case Tiles(t, _), TileInstances(t, _):
-					 if( t.file == null ) {
-						 var size = this.props.tileSize;
-						 t.stride = Std.int(t.size * t.stride / size);
-						 t.size = size;
-					 }
-					 t.file = path;
-					 currentLayer.dirty = true;
-					 save();
-					 reload();
-				 default:
-				 }
+				setTilesetPath(path);
 			 });
 		 case 'lock':
 			 l.lock = val;
@@ -573,7 +574,7 @@ package system.lvl;
 			 setLayerMode(val);
 		 case 'exportPNG':
 			 //this.view.exportAsPNG();
-			 @:privateAccess LevelTools.exportToPNG(this.view.getCanvas());
+			// @:privateAccess LevelTools.exportToPNG(this.view.getCanvas());
 		 case 'layerKind': {
 				 currentLayer.props.layerKind = val;
 			 }
@@ -587,7 +588,7 @@ package system.lvl;
 		 case TList:
 			 var s = sheet.getSub(newLayer);
 			 var o = { name : null, data : null };
-			 for( c in s.columns ) {
+			 for( c in s.getColumns() ) {
 				 var v = model.base.getDefault(c);
 				 if( v != null ) Reflect.setField(o, c.name, v);
 			 }
@@ -975,7 +976,8 @@ package system.lvl;
 			 }
 		 });
  
-		 addDynamicUIControls();
+		 //addDynamicUIControls();
+		 triggerEvent(LevelOpen(this));
 	 }
  
 	 function setObject() {
@@ -1026,7 +1028,7 @@ package system.lvl;
 			 objs.push(o);
 			 if( idCol != null )
 				 Reflect.setField(o, idCol, l.indexToId[currentLayer.currentSelection]);
-			 for( c in l.baseSheet.columns ) {
+			 for( c in l.baseSheet.getColumns() ) {
 				 if( c.opt || c.name == "x" || c.name == "y" || c.name == idCol ) continue;
 				 var v = model.base.getDefault(c);
 				 if( v != null ) Reflect.setField(o, c.name, v);
@@ -1270,7 +1272,7 @@ package system.lvl;
  
 	 function hasProps( l : LayerData, required = false ) {
 		 var idCol = switch( l.data ) { case Objects(idCol, _): idCol; default: null; };
-		 for( c in l.baseSheet.columns )
+		 for( c in l.baseSheet.getColumns() )
 			 if( c.name != "x" && c.name != "y" && c.name != idCol && (!required || (!c.opt && model.base.getDefault(c) == null)) )
 				 return true;
 		 return false;
@@ -1307,19 +1309,19 @@ package system.lvl;
  
 		 var table = J("<table>").appendTo(popup);
 		 var main = #if (haxe_ver < 4) Std.instance(model, Main) #else Std.downcast(model, Main) #end;
-		 for( c in l.baseSheet.columns ) {
+		 for( c in l.baseSheet.getColumns() ) {
 			 var tr = J("<tr>").appendTo(table);
 			 var th = J("<th>").text(c.name).appendTo(tr);
 			 var td = J("<td>").html(main.valueHtml(c, Reflect.field(o, c.name), l.baseSheet, o)).appendTo(tr);
 			 td.click(function(e) {
 				 var psheet = new Sheet(null, {
 					 sheetType: SheetTypes.LEVELS,
-					 columns : l.baseSheet.columns, // SHARE
-					 props : l.baseSheet.props, // SHARE
-					 name : l.baseSheet.name, // same
+					 columns : l.baseSheet.getColumns(), // SHARE
+					 props : l.baseSheet.getProps(), // SHARE
+					 name : l.baseSheet.getName(), // same
 					 lines : Reflect.field(obj, l.name), // ref
 					 separators : [], // none
-				 },l.baseSheet.getPath() + ":" + index, { sheet : sheet, column : Lambda.indexOf(sheet.columns,Lambda.find(sheet.columns,function(c) return c.name == l.name)), line : index });
+				 },l.baseSheet.getPath() + ":" + index, { sheet : sheet, column : Lambda.indexOf(sheet.getColumns(),Lambda.find(sheet.getColumns(),function(c) return c.name == l.name)), line : index });
 				 main.editCell(c, td, psheet, index);
 				 e.preventDefault();
 				 e.stopPropagation();
@@ -1764,6 +1766,15 @@ package system.lvl;
 	 }
  
 	 function set( x, y, replace, ?drawSelection: Bool = false ) {
+
+		var continueDraw = true;
+		for (eachPlugin in Plugins.getAs("LevelPlugin", new View<LevelPlugin>())) {
+			continueDraw = continueDraw && eachPlugin.execute(LevelPluginTrigger.BeforeDraw(this, currentLayer, x, y));
+		}
+		if(!continueDraw){
+			return;
+		}
+
 		 if( !drawSelection && selection != null )
 			 return;
 		 if( palette.paintMode ) {
@@ -1919,10 +1930,15 @@ package system.lvl;
 				 continue;
 			 l.draw(view);
 		 }
-		 if(gridOn){
-			 drawGrid(view, 64, 64);
-		 } 
+		 triggerEvent(LevelRedraw(this, view));
 		 view.flush();
+	 }
+
+	 public function triggerEvent<T>(event: LevelPluginTrigger<T>): T {
+		for (eachPlugin in Plugins.getAs("LevelPlugin", new View<LevelPlugin>())) {
+			eachPlugin.execute(event);
+		}
+		return null;
 	 }
  
 	 public function drawGrid(view: Image3D, cellWidth: Int, cellHeight: Int) {

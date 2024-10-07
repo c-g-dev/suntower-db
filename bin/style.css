@@ -80,6 +80,15 @@ div.modal .content {
 	padding : 10px 20px;
 	text-align : right;
 }
+div.modal .content.info {
+	width : 300px;
+	background-color : white;
+	border : 1px solid #f48c06;
+	border-radius : 5px;
+	margin : 50px auto;
+	padding : 10px 20px;
+	text-align : center;
+}
 div.modal .content input[type=text], div.modal .content select {
 	width : 170px;
 }
@@ -426,7 +435,7 @@ div#menu ul.sheets li.active {
 	background-color : #eee;
 }
 .castle tr, .dialog-floating tr {
-	border-bottom : 1px solid #F0F0F0;
+	border-bottom : 1px solid #7f7b7b;
 }
 .castle td.edit, .dialog-floating td.edit {
 	padding : 0px;

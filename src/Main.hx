@@ -14,10 +14,18 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
- import plugin.Plugin.MenuPlugin_Window;
- import plugin.util.PluginHelper;
- import plugin.Plugin.PluginType;
- import system.WindowMenuManager;
+import RunUnitTestsMenu.runUnitTestsMenuPluginWindow;
+import util.Notifier;
+import UITest.UITestRunner;
+import system.SharedRepo;
+import haxe.Timer;
+import util.DatabaseTools;
+import plugin.util.PluginHelper;
+import plugin.Plugin.MenuPlugin_Window;
+import plugin.Plugin.PluginType;
+import system.WindowMenuManager;
+import haxe.Json;
+ import system.sheettype.SheetView.SheetViewManager;
  import system.ContextMenuManager;
  import plugin.Plugin.Plugins;
  import js.Browser;
@@ -86,15 +94,16 @@
 	 var pages : JqPages;
  
 	 var macEditMenu : MenuItem;
-	 //var customViewRenderer: CustomViewRenderer;
  
 	 function new() {
 		 super();
 		 window = platform.Window.get();
 		 window.show();
+		 Plugins.loadAll(this);
+		 Plugins.addPlugin(runUnitTestsMenuPluginWindow);
+		 SharedRepo;
 		 window.on("resize", onResize);
 		 window.on("focus", function(_) platform.App.clearCache());
-		 Plugins.loadAll(this);
 		 initMenu();
 		 levels = [];
 		 mousePos = { x : 0, y : 0 };
@@ -127,11 +136,9 @@
 		 load(true);
 		 var t = new haxe.Timer(1000);
 		 t.run = checkTime;
-		 //this.customViewRenderer = new CustomViewRenderer(this);
 		 J(Browser.document).on("contextmenu", function (e) {
 			 e.preventDefault();
 		 });
-		window.show();
 	 }
  
 	 function searchFilter( filter : String ) {
@@ -204,9 +211,9 @@
 			 cursor.x--;
 		 if( dy < 0 && cursor.y > 0 )
 			 cursor.y--;
-		 if( dx > 0 && cursor.x < cursor.s.columns.length - 1 )
+		 if( dx > 0 && cursor.x < cursor.s.getColumns().length - 1 )
 			 cursor.x++;
-		 if( dy > 0 && cursor.y < cursor.s.lines.length - 1 )
+		 if( dy > 0 && cursor.y < cursor.s.getLines().length - 1 )
 			 cursor.y++;
 		 cursor.select = null;
 		 updateCursor();
@@ -225,7 +232,7 @@
 		 if( cursor.s == null )
 			 return null;
 		 var x1 = if( cursor.x < 0 ) 0 else cursor.x;
-		 var x2 = if( cursor.x < 0 ) cursor.s.columns.length-1 else if( cursor.select != null ) cursor.select.x else x1;
+		 var x2 = if( cursor.x < 0 ) cursor.s.getColumns().length-1 else if( cursor.select != null ) cursor.select.x else x1;
 		 var y1 = cursor.y;
 		 var y2 = if( cursor.select != null ) cursor.select.y else y1;
 		 if( x2 < x1 ) {
@@ -261,10 +268,10 @@
 		 case K.DELETE if( inCDB ):
 			 J(".selected.deletable").change();
 			 if( cursor.s != null ) {
-				 if( cursor.s.props.isProps ) {
+				 if( cursor.s.getProps().isProps ) {
 					 var l = getLine(cursor.s, cursor.y);
 					 if( l != null )
-						 Reflect.deleteField(cursor.s.lines[0], l.attr("colName"));
+						 Reflect.deleteField(cursor.s.getLines()[0], l.attr("colName"));
 				 } else if( cursor.x < 0 ) {
 					 var s = getSelection();
 					 var y = s.y2;
@@ -277,9 +284,9 @@
 				 } else {
 					 var s = getSelection();
 					 for( y in s.y1...s.y2 + 1 ) {
-						 var obj = cursor.s.lines[y];
+						 var obj = cursor.s.getLines()[y];
 						 for( x in s.x1...s.x2+1 ) {
-							 var c = cursor.s.columns[x];
+							 var c = cursor.s.getColumns()[x];
 							 var def = base.getDefault(c);
 							 if( def == null )
 								 Reflect.deleteField(obj, c.name);
@@ -329,17 +336,17 @@
 				 var s = getSelection();
 				 var data = [];
 				 for( y in s.y1...s.y2+1 ) {
-					 var obj = cursor.s.lines[y];
+					 var obj = cursor.s.getLines()[y];
 					 var out = {};
 					 for( x in s.x1...s.x2+1 ) {
-						 var c = cursor.s.columns[x];
+						 var c = cursor.s.getColumns()[x];
 						 var v = Reflect.field(obj, c.name);
 						 if( v != null )
 							 Reflect.setField(out, c.name, v);
 					 }
 					 data.push(out);
 				 }
-				 setClipBoard([for( x in s.x1...s.x2+1 ) cursor.s.columns[x]], data);
+				 setClipBoard([for( x in s.x1...s.x2+1 ) cursor.s.getColumns()[x]], data);
 			 }
 		 case 'X'.code if( ctrlDown ):
 			 onKey(cast { keyCode : 'C'.code, ctrlKey : true });
@@ -351,12 +358,12 @@
 			 var posX = cursor.x < 0 ? 0 : cursor.x;
 			 var posY = cursor.y < 0 ? 0 : cursor.y;
 			 for( obj1 in clipboard.data ) {
-				 if( posY == sheet.lines.length )
+				 if( posY == sheet.getLines().length )
 					 sheet.newLine();
-				 var obj2 = sheet.lines[posY];
+				 var obj2 = sheet.getLines()[posY];
 				 for( cid in 0...clipboard.schema.length ) {
 					 var c1 = clipboard.schema[cid];
-					 var c2 = sheet.columns[cid + posX];
+					 var c2 = sheet.getColumns()[cid + posX];
 					 if( c2 == null ) continue;
 					 var f = base.getConvFunction(c1.type, c2.type);
 					 var v : Dynamic = Reflect.field(obj1, c1.name);
@@ -382,7 +389,7 @@
 			 save();
 		 case K.TAB:
 			 if( ctrlDown ) {
-				 var sheets = base.sheets.filter(function(s) return !s.props.hide);
+				 var sheets = base.sheets.filter(function(s) return !s.getProps().hide);
 				 var pos = (level == null ? Lambda.indexOf(sheets, viewSheet) : sheets.length + Lambda.indexOf(levels, level)) + 1;
 				 var s = sheets[pos % (sheets.length + levels.length)];
 				 if( s != null ) selectSheet(s) else {
@@ -408,15 +415,15 @@
 				 showReferences(cursor.s, cursor.y);
 		 case K.F4:
 			 if( cursor.s != null && cursor.x >= 0 ) {
-				 var c = cursor.s.columns[cursor.x];
-				 var id = Reflect.field(cursor.s.lines[cursor.y], c.name);
+				 var c = cursor.s.getColumns()[cursor.x];
+				 var id = Reflect.field(cursor.s.getLines()[cursor.y], c.name);
 				 switch( c.type ) {
 				 case TRef(s):
 					 var sd = base.getSheet(s);
 					 if( sd != null ) {
 						 var k = sd.index.get(id);
 						 if( k != null ) {
-							 var index = Lambda.indexOf(sd.lines, k.obj);
+							 var index = Lambda.indexOf(sd.getLines(), k.obj);
 							 if( index >= 0 ) {
 								 sheetCursors.set(s, { s : sd, x : 0, y : index } );
 								 selectSheet(sd);
@@ -461,7 +468,7 @@
  
 		 var res = J("<tr>").addClass("list");
 		 J("<td>").appendTo(res);
-		 var cell = J("<td>").attr("colspan", "" + (sheet.columns.length + (sheet.isLevel() ? 1 : 0))).appendTo(res);
+		 var cell = J("<td>").attr("colspan", "" + (sheet.getColumns().length + (sheet.isLevel() ? 1 : 0))).appendTo(res);
 		 var div = J("<div>").appendTo(cell);
 		 div.hide();
 		 var content = J("<table>").appendTo(div);
@@ -478,13 +485,13 @@
 			 var l = J("<tr>").appendTo(content).addClass("clickable");
 			 J("<td>").text("" + (index++)).appendTo(l);
 			 var slast = rs.s[rs.s.length - 1];
-			 J("<td>").text(slast.s.name.split("@").join(".")+"."+slast.c).appendTo(l);
+			 J("<td>").text(slast.s.getName().split("@").join(".")+"."+slast.c).appendTo(l);
 			 var path = [];
 			 for( i in 0...rs.s.length ) {
 				 var s = rs.s[i];
 				 var oid = Reflect.field(rs.o.path[i], s.id);
 				 if( oid == null || oid == "" )
-					 path.push(s.s.name.split("@").pop() + "[" + rs.o.indexes[i]+"]");
+					 path.push(s.s.getName().split("@").pop() + "[" + rs.o.indexes[i]+"]");
 				 else
 					 path.push(oid);
 			 }
@@ -497,10 +504,10 @@
 					 openedList.set(key, true);
 				 }
 				 var starget = rs.s[0].s;
-				 sheetCursors.set(starget.name, {
+				 sheetCursors.set(starget.getName(), {
 					 s : new system.db.Sheet(base,{ 
 						 sheetType: SheetTypes.DATA_TABLE,
-						 name : slast.s.name, 
+						 name : slast.s.getName(), 
 						 separators : [], 
 						 lines : [], 
 						 columns : [], 
@@ -542,13 +549,13 @@
 			 saveImages();
 		 case TTilePos:
 			 // if we change a file that has moved, change it for all instances having the same file
-			 var obj = sheet.lines[index];
+			 var obj = sheet.getLines()[index];
 			 var oldV : data.Types.TilePos = old;
 			 var newV : data.Types.TilePos = Reflect.field(obj, c.name);
 			 if( newV != null && oldV != null && oldV.file != newV.file && !platform.VFileSystem.exists(getAbsPath(oldV.file)) && platform.VFileSystem.exists(getAbsPath(newV.file)) ) {
 				 var change = false;
-				 for( i in 0...sheet.lines.length ) {
-					 var t : Dynamic = Reflect.field(sheet.lines[i], c.name);
+				 for( i in 0...sheet.getLines().length ) {
+					 var t : Dynamic = Reflect.field(sheet.getLines()[i], c.name);
 					 if( t != null && t.file == oldV.file ) {
 						 t.file = newV.file;
 						 change = true;
@@ -609,7 +616,7 @@
 				 default: '$v';
 			 }
 		 case TId:
-			 v == "" ? '<span class="error">#MISSING</span>' : (base.getSheet(sheet.name).index.get(v).obj == obj ? v : '<span class="error">#DUP($v)</span>');
+			 v == "" ? '<span class="error">#MISSING</span>' : (base.getSheet(sheet.getName()).index.get(v).obj == obj ? v : '<span class="error">#DUP($v)</span>');
 		 case TString, TLayer(_):
 			 v == "" ? "&nbsp;" : StringTools.htmlEscape(v);
 		 case TRef(sname):
@@ -642,7 +649,7 @@
 			 var size = 0;
 			 for( v in a ) {
 				 var vals = [];
-				 for( c in ps.columns )
+				 for( c in ps.getColumns())
 					 switch( c.type ) {
 					 case TList, TProperties:
 						 continue;
@@ -669,7 +676,7 @@
 		 case TProperties:
 			 var ps = sheet.getSub(c);
 			 var out = [];
-			 for( c in ps.columns ) {
+			 for( c in ps.getColumns()) {
 				 var pval = Reflect.field(v, c.name);
 				 if( pval == null && c.opt ) continue;
 				 out.push(c.name+" : "+valueHtml(c, pval, ps, v));
@@ -738,7 +745,7 @@
 	 }
  
 	 function popupLine( sheet : Sheet, index : Int ) {
-		 trace("popupline: " + sheet.name + " " + index);
+		 trace("popupline: " + sheet.getName + " " + index);
 		 var n = new Menu();
 		 var nup = new MenuItem( { label : "Move Up" } );
 		 var ndown = new MenuItem( { label : "Move Down" } );
@@ -756,8 +763,8 @@
 		 }
  
 		 var sepIndex = -1;
-		 for (i in 0...sheet.separators.length) {
-			 var s = sheet.separators[i];
+		 for (i in 0...sheet.getSeparators().length) {
+			 var s = sheet.getSeparators()[i];
 			 if (s.index == index) {
 				 sepIndex = i;
 				 break;
@@ -765,38 +772,38 @@
 		 }
 		 nsep.checked = sepIndex >= 0;
 		 nins.click = function() {
-			 trace("nins: " + sheet.name + " " + index);
+			 trace("nins: " + sheet.getName + " " + index);
 			 newLine(sheet, index);
 		 };
 		 
 		 nup.click = function() {
-			 trace("nup: " + sheet.name + " " + index);
+			 trace("nup: " + sheet.getName + " " + index);
 			 moveLine(sheet, index, -1);
 		 };
 		 ndown.click = function() {
-			 trace("ndown: " + sheet.name + " " + index);
+			 trace("ndown: " + sheet.getName + " " + index);
 			 moveLine(sheet, index, 1);
 		 };
 		 ndel.click = function() {
-			 trace("ndel: " + sheet.name + " " + index);
+			 trace("ndel: " + sheet.getName + " " + index);
 			 sheet.deleteLine(index);
 			 refresh();
 			 save();
 		 };
 		 nsep.click = function() {
-			 trace("nsep: " + sheet.name + " " + index);
+			 trace("nsep: " + sheet.getName + " " + index);
 			 if (sepIndex >= 0) { // remove
-				 sheet.separators.splice(sepIndex, 1);
+				 sheet.getSeparators().splice(sepIndex, 1);
 			 } else 
-				 sheet.separators.push({index: index, id:Std.string(sepIndex), title:"unnamed separator"});
+				 sheet.getSeparators().push({index: index, id:Std.string(sepIndex), title:"unnamed separator"});
 			 refresh();
 			 save();
 		 };
 		 nref.click = function() {
-			 trace("nref: " + sheet.name + " " + index);
+			 trace("nref: " + sheet.getName + " " + index);
 			 showReferences(sheet, index);
 		 };
-		 if( sheet.props.hide )
+		 if( sheet.getProps().hide )
 			 nsep.enabled = false;
 		 nins.on("click", function() { trace("clicked nis"); });
 		 n.popup(mousePos.x, mousePos.y);
@@ -834,7 +841,7 @@
 							 values[i] = k.f(values[i]);
 					 default:
 						 var refMap = new Map();
-						 for( obj in sheet.getLines() ) {
+						 for( obj in sheet.getScopedLines() ) {
 							 var t = Reflect.field(obj, c.name);
 							 if( t != null && t != "" ) {
 								 var t2 = k.f(t);
@@ -872,7 +879,7 @@
 			 ] ) {
 				 var m = new MenuItem( { label : k.n } );
 				 m.click = function() {
-					 for( obj in sheet.getLines() ) {
+					 for( obj in sheet.getScopedLines() ) {
 						 var t = Reflect.field(obj, c.name);
 						 if( t != null ) {
 							 var t2 = k.f(t);
@@ -890,8 +897,8 @@
 		 default:
 		 }
  
-		 ndisp.checked = sheet.props.displayColumn == c.name;
-		 nicon.checked = sheet.props.displayIcon == c.name;
+		 ndisp.checked = sheet.getProps().displayColumn == c.name;
+		 nicon.checked = sheet.getProps().displayIcon == c.name;
  
 		 ndisp.enabled = false;
 		 nicon.enabled = false;
@@ -904,22 +911,22 @@
 		 }
  
 		 nedit.click = function() {
-			 newColumn(sheet.name, c);
+			 newColumn(sheet.getName(), c);
 		 };
 		 nleft.click = function() {
-			 var index = Lambda.indexOf(sheet.columns, c);
+			 var index = Lambda.indexOf(sheet.getColumns(), c);
 			 if( index > 0 ) {
-				 sheet.columns.remove(c);
-				 sheet.columns.insert(index - 1, c);
+				 sheet.getColumns().remove(c);
+				 sheet.getColumns().insert(index - 1, c);
 				 refresh();
 				 save();
 			 }
 		 };
 		 nright.click = function() {
-			 var index = Lambda.indexOf(sheet.columns, c);
-			 if( index < sheet.columns.length - 1 ) {
-				 sheet.columns.remove(c);
-				 sheet.columns.insert(index + 1, c);
+			 var index = Lambda.indexOf(sheet.getColumns(), c);
+			 if( index < sheet.getColumns().length - 1 ) {
+				 sheet.getColumns().remove(c);
+				 sheet.getColumns().insert(index + 1, c);
 				 refresh();
 				 save();
 			 }
@@ -929,27 +936,27 @@
 				 deleteColumn(sheet, c.name);
 		 };
 		 ndisp.click = function() {
-			 if( sheet.props.displayColumn == c.name ) {
-				 sheet.props.displayColumn = null;
+			 if( sheet.getProps().displayColumn == c.name ) {
+				 sheet.getProps().displayColumn = null;
 			 } else {
-				 sheet.props.displayColumn = c.name;
+				 sheet.getProps().displayColumn = c.name;
 			 }
 			 sheet.sync();
 			 refresh();
 			 save();
 		 };
 		 nicon.click = function() {
-			 if( sheet.props.displayIcon == c.name ) {
-				 sheet.props.displayIcon = null;
+			 if( sheet.getProps().displayIcon == c.name ) {
+				 sheet.getProps().displayIcon = null;
 			 } else {
-				 sheet.props.displayIcon = c.name;
+				 sheet.getProps().displayIcon = c.name;
 			 }
 			 sheet.sync();
 			 refresh();
 			 save();
 		 };
 		 nins.click = function() {
-			 newColumn(sheet.name, Lambda.indexOf(sheet.columns,c) + 1);
+			 newColumn(sheet.getName(), Lambda.indexOf(sheet.getColumns(),c) + 1);
 		 };
 		 n.popup(mousePos.x, mousePos.y);
 	 }
@@ -994,7 +1001,7 @@
 			 for( i in 0...base.sheets.length ) {
 				 var s2 = base.sheets[i];
 				 if( s == s2 ) break;
-				 if( !s2.props.hide ) prev = i;
+				 if( !s2.getProps().hide ) prev = i;
 			 }
 			 if( prev < 0 ) return;
 			 base.sheets.remove(s);
@@ -1005,7 +1012,7 @@
 			 save();
 		 };
 		 nright.click = function() {
-			 var sheets = [for( s in base.sheets ) if( !s.props.hide ) s];
+			 var sheets = [for( s in base.sheets ) if( !s.getProps().hide ) s];
 			 var index = sheets.indexOf(s);
 			 var next = sheets[index+1];
 			 if( index < 0 || next == null ) return;
@@ -1039,35 +1046,35 @@
 		 nins.click = function() {
 			 newSheet();
 		 };
-		 nindex.checked = s.props.hasIndex;
+		 nindex.checked = s.getProps().hasIndex;
 		 nindex.click = function() {
-			 if( s.props.hasIndex ) {
-				 for( o in s.getLines() )
+			 if( s.getProps().hasIndex ) {
+				 for( o in s.getScopedLines() )
 					 Reflect.deleteField(o, "index");
-				 s.props.hasIndex = false;
+				 s.getProps().hasIndex = false;
 			 } else {
-				 for( c in s.columns )
+				 for( c in s.getColumns())
 					 if( c.name == "index" ) {
 						 error("Column 'index' already exists");
 						 return;
 					 }
-				 s.props.hasIndex = true;
+				 s.getProps().hasIndex = true;
 			 }
 			 save();
 		 };
-		 ngroup.checked = s.props.hasGroup;
+		 ngroup.checked = s.getProps().hasGroup;
 		 ngroup.click = function() {
-			 if( s.props.hasGroup ) {
-				 for( o in s.getLines() )
+			 if( s.getProps().hasGroup ) {
+				 for( o in s.getScopedLines() )
 					 Reflect.deleteField(o, "group");
-				 s.props.hasGroup = false;
+				 s.getProps().hasGroup = false;
 			 } else {
-				 for( c in s.columns )
+				 for( c in s.getColumns())
 					 if( c.name == "group" ) {
 						 error("Column 'group' already exists");
 						 return;
 					 }
-				 s.props.hasGroup = true;
+				 s.getProps().hasGroup = true;
 			 }
 			 save();
 		 };
@@ -1086,7 +1093,7 @@
 			 i.click();
 		 };
 		 exportSheetJSON.click = function() {
-			 var i = J("<input>").attr("type", "file").attr("nwsaveas",'${s.name}.json').css("display","none").change(function(e) {
+			 var i = J("<input>").attr("type", "file").attr("nwsaveas",'${s.getName()}.json').css("display","none").change(function(e) {
 				 var j = JTHIS;
 				 this.exportSheetJSON(s, j.val());
 				 initContent();
@@ -1107,7 +1114,7 @@
 			 i.click();
 		 };
 		 exportSheetCSV.click = function() {
-			 var i = J("<input>").attr("type", "file").attr("nwsaveas",'${s.name}.csv').css("display","none").change(function(e) {
+			 var i = J("<input>").attr("type", "file").attr("nwsaveas",'${s.getName()}.csv').css("display","none").change(function(e) {
 				 var j = JTHIS;
 				 this.exportSheetCSV(s, j.val());
 				 initContent();
@@ -1123,9 +1130,9 @@
 			 n.append(nlevel);
 			 nlevel.click = function() {
 				 if( s.isLevel() )
-					 Reflect.deleteField(s.props, "level");
+					 Reflect.deleteField(s.getProps(), "level");
 				 else
-					 s.props.level = {
+					 s.getProps().level = {
 						 tileSets : {},
 					 }
 				 save();
@@ -1138,7 +1145,7 @@
  
 	 public function editCell( c : Column, v : JQuery, sheet : Sheet, index : Int ) {
 		 if( macEditMenu != null ) window.menu.append(macEditMenu);
-		 var obj = sheet.lines[index];
+		 var obj = sheet.getLines()[index];
 		 var val : Dynamic = Reflect.field(obj, c.name);
 		 var old = val;
 		 inline function getValue() {
@@ -1193,7 +1200,7 @@
 			 i.blur(function(_) {
 				 var nv = i.val();
 				 var old = val;
-				 var prevObj = c.type == TId && old != null ? base.getSheet(sheet.name).index.get(val) : null;
+				 var prevObj = c.type == TId && old != null ? base.getSheet(sheet.getName()).index.get(val) : null;
 				 var prevTarget = null;
 				 if( nv == "" && c.opt ) {
 					 if( val != null ) {
@@ -1219,7 +1226,7 @@
 					 }
 					 if( val2 != val && val2 != null ) {
  
-						 prevTarget = base.getSheet(sheet.name).index.get(val2);
+						 prevTarget = base.getSheet(sheet.getName()).index.get(val2);
 						 if( c.type == TId && val != null && (prevObj == null || prevObj.obj == obj) ) {
 							 var m = new Map();
 							 m.set(val, val2);
@@ -1234,7 +1241,7 @@
 				 }
 				 editDone();
 				 // handle #DUP in case we change the first element (creates a dup or removes one)
-				 if( c.type == TId && prevObj != null && old != val && ((prevObj.obj == obj && base.getSheet(sheet.name).index.get(old) != null) || (prevTarget != null && base.getSheet(sheet.name).index.get(val).obj != prevTarget.obj)) ) {
+				 if( c.type == TId && prevObj != null && old != val && ((prevObj.obj == obj && base.getSheet(sheet.getName()).index.get(old) != null) || (prevTarget != null && base.getSheet(sheet.getName()).index.get(val).obj != prevTarget.obj)) ) {
 					 refresh();
 					 return;
 				 }
@@ -1314,7 +1321,7 @@
 			 s.change(function(e) e.stopPropagation());
  
 			 var props : Dynamic = { data : elts };
-			 if( sdat.props.displayIcon != null ) {
+			 if( sdat.getProps().displayIcon != null ) {
 				 function buildElement(i) {
 					 var text = StringTools.htmlEscape(i.text);
 					 return J("<div>"+(i.ico == null ? "<div style='display:inline-block;width:16px'/>" : tileHtml(i.ico,true)) + " " + text+"</div>");
@@ -1440,7 +1447,7 @@
 		 }
 	 }
  
-	 function updateCursor() {
+	 function updateCursor(): Void {
 		 J(".selected").removeClass("selected");
 		 J(".cursor").removeClass("cursor");
 		 J(".cursorLine").removeClass("cursorLine");
@@ -1450,11 +1457,11 @@
 			 cursor.y = 0;
 			 cursor.select = null;
 		 }
-		 if( cursor.y >= cursor.s.lines.length ) {
-			 cursor.y = cursor.s.lines.length - 1;
+		 if( cursor.y >= cursor.s.getLines().length ) {
+			 cursor.y = cursor.s.getLines().length - 1;
 			 cursor.select = null;
 		 }
-		 var max = cursor.s.props.isProps ? 1 : cursor.s.columns.length;
+		 var max = cursor.s.getProps().isProps ? 1 : cursor.s.getColumns().length;
 		 if( cursor.x >= max ) {
 			 cursor.x = max - 1;
 			 cursor.select = null;
@@ -1482,7 +1489,9 @@
 		 if( e != null ) untyped e.scrollIntoViewIfNeeded();
 	 }
  
-	 function refresh() {
+	 function refresh(): Void {
+		trace("refresh()");
+		 this.viewSheet = this.viewSheet == null ? null : this.viewSheet.getFreshFromDB();
 		 var t = J("<table>");
 		 checkCursor = true;
 		 fillTable(t, viewSheet);
@@ -1550,7 +1559,7 @@
  
 		 var available = [];
 		 var index = 0;
-		 for( c in sheet.columns ) {
+		 for( c in sheet.getColumns() ) {
 			 if( c.opt && !Reflect.hasField(props,c.name) ) {
 				 available.push(c);
 				 continue;
@@ -1593,7 +1602,7 @@
 				 return;
 			 sel.val("");
 			 if( v == "new" ) {
-				 newColumn(sheet.name);
+				 newColumn(sheet.getName());
 				 return;
 			 }
 			 for( c in available )
@@ -1621,8 +1630,8 @@
 	 }
  
 	 function fillTable( content : JQuery, sheet : Sheet ) {
-		 if( sheet.columns.length == 0 ) {
-			 content.html('<a href="javascript:_.newColumn(\'${sheet.name}\')">Add a column</a>');
+		 if( sheet.getColumns().length == 0 ) {
+			 content.html('<a href="javascript:_.newColumn(\'${sheet.getName()}\')">Add a column</a>');
 			 return;
 		 }
  
@@ -1632,7 +1641,7 @@
 		 var types = [for( t in Type.getEnumConstructs(ColumnType) ) t.substr(1).toLowerCase()];
  
 		 J("<th>").addClass("start").appendTo(cols).click(function(_) {
-			 if( sheet.props.hide )
+			 if( sheet.getProps().hide )
 				 content.change();
 			 else
 				 J("tr.list table").change();
@@ -1644,7 +1653,7 @@
 			 e.stopPropagation();
 		 });
  
-		 var lines = [for( i in 0...sheet.lines.length ) {
+		 var lines = [for( i in 0...sheet.getLines().length ) {
 			 var l = J("<tr>");
 			 l.data("index", i);
 			 var head = J("<td>").addClass("start").text("" + i);
@@ -1667,15 +1676,15 @@
 			 l;
 		 }];
  
-		 var colCount = sheet.columns.length;
+		 var colCount = sheet.getColumns().length;
 		 if( sheet.isLevel() ) colCount++;
  
-		 for( cindex in 0...sheet.columns.length ) {
-			 var c = sheet.columns[cindex];
+		 for( cindex in 0...sheet.getColumns().length ) {
+			 var c = sheet.getColumns()[cindex];
 			 var col = J("<th>");
 			 col.text(c.name);
 			 col.addClass( "t_"+c.type.getName().substr(1).toLowerCase() );
-			 if( sheet.props.displayColumn == c.name )
+			 if( sheet.getProps().displayColumn == c.name )
 				 col.addClass("display");
 			 col.mousedown(function(e) {
 				 if( e.which == 3 ) {
@@ -1685,13 +1694,14 @@
 				 }
 			 });
 			 col.dblclick(function(_) {
-				 newColumn(sheet.name, c);
+				 newColumn(sheet.getName(), c);
 			 });
 			 cols.append(col);
  
 			 var ctype = "t_" + types[Type.enumIndex(c.type)];
-			 for( index in 0...sheet.lines.length ) {
-				 var obj = sheet.lines[index];
+			 for( index in 0...sheet.getLines().length ) {
+				 var obj = sheet.getLines()[index];
+				 trace("obj: " + Json.stringify(obj));
 				 var val : Dynamic = Reflect.field(obj,c.name);
 				 var v = J("<td>").addClass(ctype).addClass("c");
 				 var l = lines[index];
@@ -1774,9 +1784,9 @@
 						 }
 						 psheet = new system.db.Sheet(base,{
 							 sheetType: SheetTypes.DATA_TABLE,
-							 columns : psheet.columns, // SHARE
-							 props : psheet.props, // SHARE
-							 name : psheet.name, // same
+							 columns : psheet.getColumns(), // SHARE
+							 props : psheet.getProps(), // SHARE
+							 name : psheet.getName(), // same
 							 lines : val, // ref
 							 separators : [], // none
 						 },key, { sheet : sheet, column : cindex, line : index });
@@ -1838,13 +1848,13 @@
  
 						 psheet = new system.db.Sheet(base,{
 							 sheetType: SheetTypes.DATA_TABLE,
-							 columns : psheet.columns, // SHARE
-							 props : psheet.props, // SHARE
-							 name : psheet.name, // same
+							 columns : psheet.getColumns(), // SHARE
+							 props : psheet.getProps(), // SHARE
+							 name : psheet.getName(), // same
 							 lines : [for( f in Reflect.fields(val) ) null], // create as many fake lines as properties (for cursor navigation)
 							 separators : [], // none
 						 }, key, { sheet : sheet, column : cindex, line : index });
-						 @:privateAccess psheet.sheet.lines[0] = val; // ref
+						 @:privateAccess psheet.getLines()[0] = val; // ref
 						 fillProps(content, psheet, val);
 						 next.insertAfter(l);
 						 v.text("...");
@@ -1925,7 +1935,7 @@
 						 if( file == null ) {
 							 var i = index - 1;
 							 while( i >= 0 ) {
-								 var o = sheet.lines[i--];
+								 var o = sheet.getLines()[i--];
 								 var v2 = Reflect.field(o, c.name);
 								 if( v2 != null ) {
 									 file = v2.file;
@@ -2017,8 +2027,8 @@
 			 }
 		 }
  
-		 if( sheet.lines.length == 0 ) {
-			 var l = J('<tr><td colspan="${sheet.columns.length + 1}"><a href="javascript:_.insertLine()">Insert Line</a></td></tr>');
+		 if( sheet.getLines().length == 0 ) {
+			 var l = J('<tr><td colspan="${sheet.getColumns().length + 1}"><a href="javascript:_.insertLine()">Insert Line</a></td></tr>');
 			 l.find("a").click(function(_) setCursor(sheet));
 			 lines.push(l);
 		 }
@@ -2026,7 +2036,7 @@
 		 if( sheet.isLevel() ) {
 			 var col = J("<td style='width:35px'>");
 			 cols.prepend(col);
-			 for( index in 0...sheet.lines.length ) {
+			 for( index in 0...sheet.getLines().length ) {
 				 var l = lines[index];
 				 var c = J("<input type='submit' value='Edit'>");
 				 J("<td>").append(c).prependTo(l);
@@ -2046,45 +2056,31 @@
 				 });
 			 }
 		 }
- 
-		 if( sheet.sheetType == "gui" ) {
-			 var col = J("<td style='width:35px'>");
-			 cols.prepend(col);
-			 for( index in 0...sheet.lines.length ) {
-				 var l = lines[index];
-				 var c = J("<input type='submit' value='Edit'>");
-				 J("<td>").append(c).prependTo(l);
-				 c.click(function(_) {
-					 l.click();
-					//var found = new GuiBuilder(this, sheet, index);
-					 //renderCustomView(found);
-					 initContent(); // refresh tabs
-				 });
-			 }
+
+		 var sheetName = sheet.getName();
+		 if(SheetViewManager.exists(sheet.sheetType)) {
+			var col = J("<td style='width:35px'>");
+			cols.prepend(col);
+			for( index in 0...sheet.getLines().length ) {
+				var l = lines[index];
+				var c = J("<input type='submit' value='Edit'>");
+				J("<td>").append(c).prependTo(l);
+				c.click(function(_) {
+					l.click();
+					@:privateAccess trace("resolved sheet: " + this.base.getSheet(sheetName).sheet);
+					SheetViewManager.open(this.base.getSheet(sheetName), index, this);
+					initContent();
+				});
+			}
 		 }
- 
-		 if( sheet.sheetType == "vnchar" ) {
-			 var col = J("<td style='width:35px'>");
-			 cols.prepend(col);
-			 for( index in 0...sheet.lines.length ) {
-				 var l = lines[index];
-				 var c = J("<input type='submit' value='Edit'>");
-				 J("<td>").append(c).prependTo(l);
-				 c.click(function(_) {
-					 l.click();
-					 //var found = new CharBuilderCustomView(this, sheet, index);
-					 //renderCustomView(found);
-					 initContent(); // refresh tabs
-				 });
-			 }
-		 }
+
 		 
 		 content.empty();
 		 content.append(cols);
  
 		 var snext = 0;
 		 var sepMap = new Map<Int, Separator>();
-		 for (s in sheet.separators)
+		 for (s in sheet.getSeparators())
 			 sepMap.set(s.index, s);
  
 		 for( i in 0...lines.length ) {
@@ -2143,14 +2139,14 @@
 	 function selectSheet( s : Sheet, manual = true ) {
 		 viewSheet = s;
 		 pages.curPage = -1;
-		 cursor = sheetCursors.get(s.name);
+		 cursor = sheetCursors.get(s.getName());
 		 if( cursor == null ) {
 			 cursor = {
 				 x : 0,
 				 y : 0,
 				 s : s,
 			 };
-			 sheetCursors.set(s.name, cursor);
+			 sheetCursors.set(s.getName(), cursor);
 		 }
 		 if( manual ) {
 			 if( level != null ) level.dispose();
@@ -2181,9 +2177,24 @@
  
  
 	 function newSheet() {
-		 var s = J("#newsheet").show();
-		 s.find("#sheet_name").val("");
-		 s.find("#sheet_level").removeAttr("checked");
+		var sheetTypeOptions = SheetViewManager.getRegisteredTypes();
+		var popup = J("#newsheet");
+		var sheetTypeDropdown = popup.find("#sheet_type");
+		sheetTypeDropdown.find("option").each(function(index:Int, element:Dynamic):Void {
+            var option:JQuery = J(element);
+            if (!option.hasClass("built_in_sheet_type")) {
+                option.remove();
+            }
+        });
+		for (typeOption in sheetTypeOptions) {
+            var newOption:JQuery = J("<option/>")
+                .attr("value", typeOption)
+                .text(typeOption);
+            sheetTypeDropdown.append(newOption);
+        }
+		popup.find("#sheet_name").val("");
+		popup.find("#sheet_level").removeAttr("checked");
+		popup.show();
 	 }
  
 	 function deleteColumn( sheet : Sheet, ?cname) {
@@ -2272,10 +2283,10 @@
 				 if( p.b == null ) {
 					 var t = p.a;
 					 for( s in base.sheets )
-						 for( c in s.columns )
+						 for( c in s.getColumns() )
 							 switch( c.type ) {
 							 case TCustom(name) if( name == t.name ):
-								 error("Type "+name+" used by " + s.name + "@" + c.name+" cannot be removed");
+								 error("Type "+name+" used by " + s.getName() + "@" + c.name+" cannot be removed");
 								 return;
 							 default:
 							 }
@@ -2312,8 +2323,8 @@
 		 sheets.empty();
 		 for( i in 0...base.sheets.length ) {
 			 var s = base.sheets[i];
-			 if( s.props.hide ) continue;
-			 J("<option>").attr("value", "" + i).text(s.name).appendTo(sheets);
+			 if( s.getProps().hide ) continue;
+			 J("<option>").attr("value", "" + i).text(s.getName()).appendTo(sheets);
 		 }
  
 		 var types = J("[name=ctype]");
@@ -2356,7 +2367,7 @@
 	 }
  
 	 function newLine( sheet : Sheet, ?index : Int ) {
-		 trace("new line: " + sheet.name + " " + index);
+		 trace("new line: " + sheet.getName() + " " + index);
 		 sheet.newLine(index);
 		 refresh();
 		 save();
@@ -2381,30 +2392,22 @@
  
 		 name = StringTools.trim(name);
 		 if( !base.r_ident.match(name) ) {
-			 error("Invalid sheet name");
+			 error("Invalid sheet.getName()");
 			 return;
 		 }
 		 var s = base.createSheet(name, sheetType);
 		 if( s == null ) {
-			 error("Sheet name already in use");
+			 error("sheet.getName() already in use");
 			 return;
 		 }
 		 J("#newsheet").hide();
 		 prefs.curSheet = base.sheets.length - 1;
 		 s.sync();
-		 trace("sheetType: " + sheetType);
 		 if( level ){
 			 initLevel(s);
 		 }
-		 else if (sheetType == "gui"){
-			 //sheetType not being persisted
-			 //try writing to sheet.props
-			 initGUISheet(s);
-		 }
-		 else if (sheetType == "vnchar"){
-			 //sheetType not being persisted
-			 //try writing to sheet.props
-			 initVNCharSheet(s);
+		 else if(SheetViewManager.exists(sheetType)){
+			SheetViewManager.populateTable(s, sheetType, this);	 
 		 }
 		 initContent();
 		 save();
@@ -2449,9 +2452,9 @@
 				 }
 			 }
 		 }
-		 if( s.props.level == null )
-			 s.props.level = { tileSets : { } };
-		 if( s.lines.length == 0 && s.parent == null ) {
+		 if( s.getProps().level == null )
+			 s.getProps().level = { tileSets : { } };
+		 if( s.getLines().length == 0 && s.parent == null ) {
 			 var o : Dynamic = s.newLine();
 			 o.width = 128;
 			 o.height = 128;
@@ -2474,36 +2477,13 @@
 			 }
 		 }
  
-		 if( s.lines.length == 0 && s.parent == null ) {
+		 if( s.getLines().length == 0 && s.parent == null ) {
 			 var o : Dynamic = s.newLine();
 			 o.width = 128;
 			 o.height = 128;
 		 }
 	 }
  
-	 function initVNCharSheet(s : Sheet) {
-		 trace("initVNCharSheet");
-		 var cols = [ { n : "name", t : TId }, {n : "data", t : ColumnType.TString }];
- 
-		 for( c in cols ) {
-			 if( s.hasColumn(c.n) ) {
-				 if( !s.hasColumn(c.n, [c.t]) ) {
-					 error("Column " + c.n + " already exists but does not have type " + c.t);
-					 return;
-				 }
-			 } else {
-				 inline function mkCol(n, t) : Column return { name : n, type : t, typeStr : null };
-				 var col = mkCol(c.n, c.t);
-				 s.addColumn(col);
-			 }
-		 }
- 
-		 if( s.lines.length == 0 && s.parent == null ) {
-			 var o : Dynamic = s.newLine();
-			 o.width = 128;
-			 o.height = 128;
-		 }
-	 }
  
 	 function createColumn() {
  
@@ -2541,7 +2521,7 @@
 				 error("Sheet not found");
 				 return;
 			 }
-			 TRef(s.name);
+			 TRef(s.getName());
 		 case "image":
 			 TImage;
 		 case "list":
@@ -2561,7 +2541,7 @@
 				 error("Sheet not found");
 				 return;
 			 }
-			 TLayer(s.name);
+			 TLayer(s.getName());
 		 case "file":
 			 TFile;
 		 case "tilepos":
@@ -2600,8 +2580,8 @@
 				 return;
 			 }
 			 // automatically add to current selection
-			 if( sheet.props.isProps && cursor.s.columns == sheet.columns ) {
-				 var obj = cursor.s.lines[0];
+			 if( sheet.getProps().isProps && cursor.s.getColumns() == sheet.getColumns() ) {
+				 var obj = cursor.s.getLines()[0];
 				 if( obj != null )
 					 Reflect.setField(obj, c.name, base.getDefault(c, true));
 			 }
@@ -2615,28 +2595,29 @@
 	 }
  
 	 public function initContent() {
+		 this.viewSheet = this.viewSheet == null ? null : this.viewSheet.getFreshFromDB();
 		 (untyped J("body").spectrum).clearAll();
 		 var sheets = J("ul#sheets");
 		 sheets.children().remove();
 		 for( i in 0...base.sheets.length ) {
 			 var s = base.sheets[i];
-			 if( s.props.hide ) continue;
+			 if( s.getProps().hide ) continue;
 			 var li = J("<li>");
-			 li.text(s.name).attr("id", "sheet_" + i).appendTo(sheets).click(function(_) selectSheet(s)).dblclick(function(_) {
+			 li.text(s.getName()).attr("id", "sheet_" + i).appendTo(sheets).click(function(_) selectSheet(s)).dblclick(function(_) {
 				 li.empty();
-				 J("<input>").val(s.name).appendTo(li).focus().blur(function(_) {
-					 li.text(s.name);
+				 J("<input>").val(s.getName()).appendTo(li).focus().blur(function(_) {
+					 li.text(s.getName());
 					 var name = JTHIS.val();
 					 if( !base.r_ident.match(name) ) {
-						 error("Invalid sheet name");
+						 error("Invalid sheet.getName()");
 						 return;
 					 }
-					 var f = base.getSheet(name);
+					 var f = base.getSheet(s.getName());
 					 if( f != null ) {
-						 if( f != s ) error("Sheet name already in use");
+						 if( f != s ) error("sheet.getName() already in use");
 						 return;
 					 }
-					 var old = s.name;
+					 var old = s.getName();
 					 s.rename(name);
  
 					 base.mapType(function(t) {
@@ -2651,8 +2632,8 @@
 					 });
  
 					 for( s in base.sheets )
-						 if( StringTools.startsWith(s.name, old + "@") )
-							 s.rename(name + "@" + s.name.substr(old.length + 1));
+						 if( StringTools.startsWith(s.getName(), old + "@") )
+							 s.rename(name + "@" + s.getName().substr(old.length + 1));
  
 					 initContent();
 					 save();
@@ -2680,7 +2661,7 @@
 		 for( level in old ) {
 			 if( base.getSheet(level.sheetPath) == null ) continue;
 			 var s = getSheet(level.sheetPath);
-			 if( s.lines.length < level.index )
+			 if( s.getLines().length < level.index )
 				 continue;
 			 var l = new Level(this, s, level.index);
 			 if( level == this.level ) lcur = l;
@@ -2691,8 +2672,10 @@
 			 li.text(name).attr("id", "level_" + l.sheetPath.split(".").join("_") + "_" + l.index).appendTo(sheets).click(function(_) selectLevel(l));
 		 }
  
-		 if( pages.curPage >= 0 )
-			 pages.select();
+		 if( pages.curPage >= 0 ){
+			pages.select();
+			refresh();
+		 }
 		 else if( lcur != null )
 			 selectLevel(lcur);
 		 else if( base.sheets.length == 0 )
@@ -2724,12 +2707,19 @@
 		 };
 		 var mabout = new MenuItem( { label : "About" } );
 		 var mexit = new MenuItem( { label : "Exit", key : "Q", modifiers : modifier } );
+
 		 var mdebug = new MenuItem( { label : "Dev" } );
+		 var mdebugSubmenu = new Menu();
+		 var mlaunchDevTools = new MenuItem( { label : "Launch DevTools" } );
+		 mlaunchDevTools.click = function() window.showDevTools();
+		 mdebugSubmenu.append(mlaunchDevTools);
+		 mdebug.submenu = mdebugSubmenu;
+
 		 mnew.click = function() {
 			 prefs.curFile = null;
 			 load(true);
 		 };
-		 mdebug.click = function() window.showDevTools();
+		 
 		 mopen.click = function() {
 			 var i = J("<input>").attr("type", "file").css("display","none").change(function(e) {
 				 var j = JTHIS;
@@ -2864,8 +2854,8 @@
 			 }
 		 }*/
 		 
- 
-		/* WindowMenuManager.setRoot(menu);
+		 DatabaseTools;
+		 WindowMenuManager.setRoot(menu);
 		 for(plugin in Plugins.get(PluginType.MenuPlugin_Window)){
 			 switch((cast plugin: MenuPlugin_Window).shouldApply){
 				 case Always: {
@@ -2878,9 +2868,10 @@
 				 }
 			 }
 		 }
-		 WindowMenuManager.rerenderWindowMenu(this);*/
+		 WindowMenuManager.rerenderWindowMenu(this);
 		 
 		 window.menu = menu;
+
 		 if( prefs.windowPos.x > 0 && prefs.windowPos.y > 0 ) window.moveTo(prefs.windowPos.x, prefs.windowPos.y);
 		 if( prefs.windowPos.w > 50 && prefs.windowPos.h > 50 ) window.resizeTo(prefs.windowPos.w, prefs.windowPos.h);
 		 

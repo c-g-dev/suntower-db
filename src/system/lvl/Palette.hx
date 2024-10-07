@@ -52,9 +52,9 @@ class Palette {
 	public function init() {
 
 		perTileProps = [];
-		for( c in level.sheet.columns )
+		for( c in level.sheet.getColumns() )
 			if( c.name == "tileProps" && (c.type == TList || c.type == TProperties) )
-				perTileProps = level.sheet.getSub(c).columns;
+				perTileProps = level.sheet.getSub(c).getColumns();
 
 		perTileGfx = new Map();
 		for( c in perTileProps )
@@ -88,14 +88,14 @@ class Palette {
 	}
 
 	public function getTileProps(file,stride,max) {
-		var p : TilesetProps = Reflect.field(level.sheet.props.level.tileSets,file);
+		var p : TilesetProps = Reflect.field(level.sheet.getProps().level.tileSets,file);
 		if( p == null ) {
 			p = {
 				stride : stride,
 				sets : [],
 				props : [],
 			};
-			Reflect.setField(level.sheet.props.level.tileSets, file, p);
+			Reflect.setField(level.sheet.getProps().level.tileSets, file, p);
 		} else {
 			if( p.sets == null ) p.sets = [];
 			if( p.props == null ) p.props = [];

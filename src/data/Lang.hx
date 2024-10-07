@@ -393,7 +393,7 @@ class Lang {
 			if( s.props.hide ) continue;
 			var locFields = makeSheetFields(s);
 			if( locFields.length == 0 ) continue;
-			var lines = getLines(s, diff);
+			var lines = getScopedLines(s, diff);
 			if( lines.length == 0 ) continue;
 			buf.add('\t<sheet name="${s.name}">\n');
 			buf.add(buildSheetXml(s, "\t\t", lines, s.linesData, locFields, diff));
@@ -403,7 +403,7 @@ class Lang {
 		return buf.toString();
 	}
 
-	function getLines( s : SheetData, diff : LangDiff ) : Array<Dynamic> {
+	function getScopedLines( s : SheetData, diff : LangDiff ) : Array<Dynamic> {
 		if( diff != null ) {
 			var m = diff.get(s.name);
 			if( m == null ) throw "Missing diff for " + s.name;

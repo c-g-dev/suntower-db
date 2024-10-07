@@ -163,7 +163,7 @@ class Model {
 		return base.compress;
 	}
 
-	function error( msg ) {
+	public function error( msg ) {
 		js.Browser.alert(msg);
 	}
 
@@ -175,7 +175,7 @@ class Model {
 			base.load(platform.VFile.getContent(prefs.curFile));
 			if( prefs.curSheet > base.sheets.length )
 				prefs.curSheet = 0;
-			else while( prefs.curSheet > 0 && base.sheets[prefs.curSheet].props.hide )
+			else while( prefs.curSheet > 0 && base.sheets[prefs.curSheet].getProps().hide )
 				prefs.curSheet--;
 		} catch( e : Dynamic ) {
 			if( !noError ) error(Std.string(e));
@@ -199,10 +199,10 @@ class Model {
 			return;
 		var used = new Map();
 		for( s in base.sheets )
-			for( c in s.columns ) {
+			for( c in s.getColumns() ) {
 				switch( c.type ) {
 				case TImage:
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var v = Reflect.field(obj, c.name);
 						if( v != null ) used.set(v, true);
 					}
@@ -230,10 +230,10 @@ class Model {
 	function exportSheetJSON(_s: system.db.Sheet, _filePath:String) {
 
 		// export the main sheet and potential subsheets...
-		var name = _s.name;
+		var name = _s.getName();
 		var toExport = [_s.sheet];
 		for (s in _s.base.sheets)
-			if (s.name.startsWith('${_s.name}@')) // gather all subsheets
+			if (s.getName().startsWith('${_s.getName()}@')) // gather all subsheets
 				toExport.push(s.sheet);
 
 		platform.VFile.saveContent(_filePath, haxe.Json.stringify(toExport, null, "    "));
@@ -247,7 +247,7 @@ class Model {
 		var shs:Array<Dynamic> = cast haxe.Json.parse(platform.VFile.getContent(_filePath));
 		for (s in shs) {
 			// rename the imported sheet to match the current selected sheet.
-			s.name = s.name.replace(s.name.split('@')[0], _s.name);
+			s.name = s.name.replace(s.name.split('@')[0], _s.getName());
 
 			// now fix the types
 			for( c in cast(s.columns, Array<Dynamic>) ) {
@@ -260,7 +260,7 @@ class Model {
 			var existing = null;
 			for (i in 0..._s.base.sheets.length) {
 				var e = _s.base.sheets[i];
-				if (e.name==s.name) {
+				if (e.getName()==s.name) {
 					existing = e;
 					index = i;
 					break;
@@ -279,11 +279,11 @@ class Model {
 	}
 
 	function exportSheetCSV(_s:system.db.Sheet, _filePath:String) {
-		var lines = [[ for (c in _s.columns) c.name]];		
+		var lines = [[ for (c in _s.getColumns()) c.name]];		
 
-		for (l in _s.getLines()) {
+		for (l in _s.getScopedLines()) {
 			var ol = [];
-			for (c in _s.columns) {
+			for (c in _s.getColumns()) {
 				switch (c.type) {
 					case TId, TString, TFile: 
 						ol.push(Reflect.field(l, c.name));
@@ -302,7 +302,7 @@ class Model {
 		var header = d.shift(); // get rid off first line
 
 		var colMapSheet = new Map<String, Column>();
-		for (c in _s.columns)
+		for (c in _s.getColumns())
 			colMapSheet.set(c.name, c);
 
 		var lines = [];

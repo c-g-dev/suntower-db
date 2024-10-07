@@ -16,6 +16,7 @@ package system.db;
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+import haxe.Json;
 import data.Parser;
 import data.Data;
 
@@ -34,11 +35,7 @@ class Sheet {
 	public var duplicateIds : Map<String, Bool>;
 	public var index : Map<String,SheetIndex>;
 	public var all : Array<SheetIndex>;
-	public var name(get, never) : String;
-	public var columns(get, never) : Array<data.Data.Column>;
-	public var props(get, never) : data.Data.SheetProps;
-	public var lines(get, never) : Array<Dynamic>;
-	public var separators(get, never) : Array<Separator>;
+
 
 	public var idCol : data.Data.Column;
 	public var realSheet : Sheet;
@@ -57,18 +54,21 @@ class Sheet {
 		realSheet = this;
 	}
 
-	inline function get_lines() return sheet.lines;
-	inline function get_props() return sheet.props;
-	inline function get_columns() return sheet.columns;
-	inline function get_name() return sheet.name;
-	inline function get_separators() return sheet.separators;
+	//had to remove the properties and inline getters because they will not compile correctly with the plugin system
+	//all property references will now be full fat function calls
+	public function getLines() return sheet.lines;
+	public function getProps() return sheet.props;
+	public function getColumns() return sheet.columns;
+	public function getName() return sheet.name;
+	public function getSeparators() return sheet.separators;
+
 
 	public inline function isLevel() {
 		return sheet.props.level != null;
 	}
 
 	public inline function getSub( c : Column ) {
-		return base.getSheet(name + "@" + c.name);
+		return base.getSheet(getName() + "@" + c.name);
 	}
 
 	public function getParent() {
@@ -79,7 +79,7 @@ class Sheet {
 		return { s : base.getSheet(parts.join("@")), c : colName };
 	}
 
-	public function getLines( scope = -1 ) : Array<Dynamic> {
+	public function getScopedLines( scope = -1 ) : Array<Dynamic> {
 		var p = getParent();
 		if( p == null ) {
 			if( sheet.lines == null && sheet.props.dataFiles != null )
@@ -95,7 +95,7 @@ class Sheet {
 			if( scope == 0 ) throw "TODO";
 			// level tileprops
 			var all = [];
-			var sets = p.s.props.level.tileSets;
+			var sets = p.s.getProps().level.tileSets;
 			for( f in Reflect.fields(sets) ) {
 				var t : data.Data.TilesetProps = Reflect.field(sets, f);
 				if( t.props == null ) continue;
@@ -121,14 +121,14 @@ class Sheet {
 
 		if( sheet.props.isProps ) {
 			// properties
-			for( obj in p.s.getLines(parentScope) ) {
+			for( obj in p.s.getScopedLines(parentScope) ) {
 				var v : Dynamic = Reflect.field(parentScope >= 0 ? obj.obj : obj, p.c);
 				if( v != null )
 					all.push(scope >= 0 ? { id : makeId(obj,v), obj : v } : v);
 			}
 		} else {
 			// lists
-			for( obj in p.s.getLines(parentScope) ) {
+			for( obj in p.s.getScopedLines(parentScope) ) {
 				var arr : Array<Dynamic> = Reflect.field(parentScope >= 0 ? obj.obj : obj, p.c);
 				if( arr != null )
 					for( v in arr )
@@ -218,7 +218,7 @@ class Sheet {
 	}
 
 	public function hasColumn( name : String, ?types : Array<ColumnType> ) {
-		for( c in columns )
+		for( c in getColumns() )
 			if( c.name == name ) {
 				if( types != null ) {
 					for( t in types )
@@ -298,7 +298,7 @@ class Sheet {
 		for( c in sheet.columns )
 			if( c.name == cname ) {
 				sheet.columns.remove(c);
-				for( o in getLines() )
+				for( o in getScopedLines() )
 					Reflect.deleteField(o, c.name);
 				if( sheet.props.displayColumn == c.name ) {
 					sheet.props.displayColumn = null;
@@ -334,7 +334,7 @@ class Sheet {
 			// create an hidden sheet for the model
 			base.createSubSheet(this, c);
 		}
-		for( i in getLines() ) {
+		for( i in getScopedLines() ) {
 			var def = base.getDefault(c, this);
 			if( def != null ) Reflect.setField(i, c.name, def);
 		}
@@ -343,7 +343,7 @@ class Sheet {
 
 	public function getDefaults() {
 		var props = {};
-		for( c in columns ) {
+		for( c in getColumns() ) {
 			var d = base.getDefault(c, this);
 			if( d != null )
 				Reflect.setField(props, c.name, d);
@@ -381,10 +381,10 @@ class Sheet {
 
 	function changeLineOrder( remap : Array<Int> ) {
 		for( s in base.sheets )
-			for( c in s.columns )
+			for( c in s.getColumns() )
 				switch( c.type ) {
 				case TLayer(t) if( t == sheet.name ):
-					for( obj in s.getLines() ) {
+					for( obj in s.getScopedLines() ) {
 						var ldat : data.Types.Layer<Int> = Reflect.field(obj, c.name);
 						if( ldat == null || ldat == cast "" ) continue;
 						var d = ldat.decode([for( i in 0...256 ) i]);
@@ -420,7 +420,7 @@ class Sheet {
 		var depth = 0;
 		var ourIdCol = idCol;
 		if (ourIdCol == null) {
-			for (c in columns) {
+			for (c in getColumns()) {
 				if (c.type == TId) {
 					ourIdCol = c;
 					break;
@@ -439,18 +439,18 @@ class Sheet {
 				depth++;
 			}
 			depth--;
-			scopeObj = cur.parent.sheet.getLines()[cur.parent.line];
+			scopeObj = cur.parent.sheet.getScopedLines()[cur.parent.line];
 		}
 
 		var results = [];
 		for( s in base.sheets ) {
-			for( c in s.columns )
+			for( c in s.getColumns() )
 				switch( c.type ) {
 				case TRef(sname) if( sname == sheet.name ):
 					var sheets = [];
 					var p = { s : s, c : c.name, id : null };
 					while( true ) {
-						for( c in p.s.columns )
+						for( c in p.s.getColumns() )
 							switch( c.type ) {
 							case TId: p.id = c.name; break;
 							default:
@@ -583,7 +583,7 @@ class Sheet {
 	}
 
 	public function rename( name : String ) {
-		@:privateAccess base.smap.remove(this.name);
+		@:privateAccess base.smap.remove(this.getName());
 		sheet.name = name;
 		@:privateAccess base.smap.set(name, this);
 	}
@@ -595,12 +595,12 @@ class Sheet {
 		duplicateIds = new Map();
 		all = [];
 		idCol = null;
-		for( c in columns )
+		for( c in getColumns() )
 			if( c.type == TId ) {
 				var isLocal = c.scope != null;
 				idCol = c;
-				if( lines == null && sheet.props.dataFiles != null ) continue;
-				for( l in getLines(c.scope) ) {
+				if( getLines() == null && sheet.props.dataFiles != null ) continue;
+				for( l in getScopedLines(c.scope) ) {
 					var obj = isLocal ? l.obj : l;
 					var v = Reflect.field(obj, c.name);
 					if( v == null || v == "" ) continue;
@@ -610,12 +610,12 @@ class Sheet {
 						v = l.id+":"+v;
 					}
 					var ico = null;
-					if( props.displayColumn != null ) {
-						disp = Reflect.field(obj, props.displayColumn);
+					if( getProps().displayColumn != null ) {
+						disp = Reflect.field(obj, getProps().displayColumn);
 						if( disp == null || disp == "" ) disp = "#"+v;
 					}
-					if( props.displayIcon != null )
-						ico = Reflect.field(obj, props.displayIcon);
+					if( getProps().displayIcon != null )
+						ico = Reflect.field(obj, getProps().displayIcon);
 					var o = { id : v, disp:disp, ico:ico, obj : obj };
 					if( index.get(v) == null )
 						index.set(v, o);
@@ -626,7 +626,17 @@ class Sheet {
 				all.sort(sortById);
 				break;
 			}
-		@:privateAccess base.smap.set(name, this);
+		@:privateAccess base.smap.set(getName(), this);
 	}
 
+
+	public function getFreshFromDB(): Sheet {
+		if(base.sheets == null) return this;
+		for (eachSheet in base.sheets) {
+			if( eachSheet.getName() == this.getName() ) {
+				return eachSheet;	
+			}
+		}
+		return this;
+	}
 }

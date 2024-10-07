@@ -745,6 +745,7 @@ class Parser {
 								var e = parseExpr();
 								c.values.push(e);
 								tk = token();
+								trace("switch token: " + tk);
 								switch (tk) {
 									case TComma:
 										// next expr

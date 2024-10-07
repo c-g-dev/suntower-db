@@ -1,6 +1,7 @@
 -cp libs
 -cp src
 -cp plugins
+-cp test
 
 -js bin/castle.js
 -main Main
@@ -19,5 +20,5 @@
 
 -D lz4js
 -D analyzer-optimize
--dce std
+-dce no
 -D js-es=6

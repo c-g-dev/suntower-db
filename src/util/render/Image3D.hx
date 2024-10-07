@@ -76,7 +76,7 @@ class Image3D extends Image {
 			initScale();
 			return;
 		}
-		gl = canvas.getContextWebGL( { alpha : false, antialias : false } );
+		gl = canvas.getContextWebGL( { alpha : false, antialias : false, preserveDrawingBuffer: true } );
 
 		if( gl == null )
 			js.Browser.alert("Cannot initialize WebGL context ! (windows user : install DirectX redist)");

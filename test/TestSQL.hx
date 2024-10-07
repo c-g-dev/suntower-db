@@ -1,4 +1,4 @@
-package test;
+package ;
 
 import haxe.Json;
 import util.query.SqlEngine;
