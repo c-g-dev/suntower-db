@@ -1,5 +1,8 @@
 package tests;
 
+import CommonTestSteps.ClickEditLevelButton;
+import CommonTestSteps.NewSheetPopup_ChooseType;
+import CommonTestSteps.TestSucceeds;
 import CommonTestSteps.NewSheetPopup_Confirm;
 import CommonTestSteps.NewSheetPopup_ChooseName;
 import CommonTestSteps.ClickNewSheetAnchor;

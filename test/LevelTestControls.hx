@@ -1,7 +1,9 @@
 class LevelTestControls {
+
+    var main: Main;
     
-    public function new() {
-        
+    public function new(main: Main) {
+        this.main = main;
     }
 
     public function ChoosePalette(x:Int, y:Int) {

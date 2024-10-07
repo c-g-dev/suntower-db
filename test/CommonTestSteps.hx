@@ -41,6 +41,18 @@ var NewSheetPopup_ChooseName = (name: String) -> {
     }
 }    
 
+var NewSheetPopup_ChooseType = (name: String) -> { 
+    return (test) -> {
+        var popup = J("#newsheet");
+        if( !popup.is(":visible") ) {
+            return Failure("Popup not visible");
+        }
+        var popupSheetField = popup.find("#sheet_type");
+        popupSheetField.val(name);
+        return NextStep;
+    }
+}
+
 var NewSheetPopup_Confirm: UITestStep = (test) -> {
     var popup = J("#newsheet");
     if( !popup.is(":visible") ) {
@@ -49,6 +61,15 @@ var NewSheetPopup_Confirm: UITestStep = (test) -> {
     J("#newsheet #sheet_form > p.buttons > input[type=submit]:nth-child(1)").get(0).click();
     return NextStep;
 }
+
+var ClickEditLevelButton= (row: Int) -> {
+    return (test) -> {
+        var cell = TestUtils.getCell(0,0);
+        var editButton = cell.firstChild();
+        editButton.click();
+        return NextStep;
+    }
+} 
 
 var AddColumnPopup: UITestStep = (test) -> {
     @:privateAccess test.main.newColumn();
