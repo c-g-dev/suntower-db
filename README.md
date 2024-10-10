@@ -24,6 +24,35 @@ CastleDB - Suntower Edition is a reimplementation of the legacy CastleDB static 
 <br/>
 <br/>
 
+## Plugin Example
+
+Adding a "Duplicate" option to the right-click context menu of sheet rows.
+
+```haxe
+var menuPlugin = {
+    type: "MenuPlugin_RowContext",
+    menuPath: [],
+    shouldApply: MenuPlugin_Window_ShouldApply.Always,
+    appliesToRow: (context) -> {
+        return true; // Always apply to rows
+    },
+    getMenu: (context) -> {
+        var duplicateItem = new MenuItem({ label: "Duplicate" });
+        duplicateItem.click = () -> {
+            context.sheet.copyLine(context.rowIndex);
+            context.model.refresh();
+            context.model.save();
+        };
+        return duplicateItem;
+    }
+};
+
+var export = [menuPlugin];
+```
+
+![image](https://github.com/user-attachments/assets/20a0e3e6-21e1-4fe7-b55d-d3f54b6ecfd6)
+
+
 # Guides
 <a href="https://github.com/c-g-dev/suntower-db/wiki/Tutorial-%E2%80%90-Creating-Plugins"><strong>How to write plugins</strong></a>
 
