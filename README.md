@@ -21,6 +21,11 @@ CastleDB - Suntower Edition is a reimplementation of the legacy CastleDB static 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/6e9485e5-19a6-43f8-9f73-842de0d6a619" alt="Centered Image" />
 </div>
+<br/>
+<br/>
 
+# Guides
+<a href="https://github.com/c-g-dev/suntower-db/wiki/Tutorial-%E2%80%90-Creating-Plugins"><strong>How to write plugins</strong></a>
 
-Docs under construction...
+<br/>
+More docs under construction...
