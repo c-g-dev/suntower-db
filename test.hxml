@@ -17,6 +17,8 @@
 -lib ludi-commons
 -lib hscript
 
+--resource test_tileset.png@test_tileset
+
 -D lz4js
 -D analyzer-optimize
 -dce std

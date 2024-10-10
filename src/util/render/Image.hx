@@ -1,5 +1,11 @@
 package util.render;
 
+import haxe.crypto.Base64;
+import platform.VFile;
+import platform.VFileSystem.InMemoryFileSystem;
+
+using StringTools;
+
 /*
  * Copyright (c) 2015, Nicolas Cannasse
  *
@@ -227,7 +233,13 @@ class Image {
 			i.fill(0xFFFF00FF);
 			callb(i);
 		};
-		i.src = "file://"+url;
+		if(url.startsWith(InMemoryFileSystem.VIRTUAL_DRIVE)){
+			var bytes = VFile.getBytes(url);
+			i.src = "data:image/png;base64," + Base64.encode(bytes);
+		}
+		else{
+			i.src = "file://"+url;
+		}
 	}
 
 	public static function fromCanvas( c : js.html.CanvasElement ) {

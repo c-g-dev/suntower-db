@@ -10,9 +10,9 @@ import haxe.io.Output;
 class VFileSystem {
 
     public static function exists(path:String):Bool {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
             
-            var vPath = path.substr("VIRTUAL::".length);
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             return InMemoryFileSystem.exists(vPath);
         } else {
             return FileSystem.exists(path);
@@ -20,13 +20,13 @@ class VFileSystem {
     }
 
     public static function rename(path:String, newPath:String):Void {
-        var isVirtual = (path != null && StringTools.startsWith(path, "VIRTUAL::"));
-        var isNewVirtual = (newPath != null && StringTools.startsWith(newPath, "VIRTUAL::"));
+        var isVirtual = (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE));
+        var isNewVirtual = (newPath != null && StringTools.startsWith(newPath, InMemoryFileSystem.VIRTUAL_DRIVE));
 
         if (isVirtual && isNewVirtual) {
             
-            var vPath = path.substr("VIRTUAL::".length);
-            var vNewPath = newPath.substr("VIRTUAL::".length);
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
+            var vNewPath = newPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFileSystem.rename(vPath, vNewPath);
         } else if (!isVirtual && !isNewVirtual) {
             
@@ -37,26 +37,26 @@ class VFileSystem {
     }
 
     public static function fullPath(relPath:String):String {
-        if (relPath != null && StringTools.startsWith(relPath, "VIRTUAL::")) {
-            var vPath = relPath.substr("VIRTUAL::".length);
-            return "VIRTUAL::" + InMemoryFileSystem.fullPath(vPath);
+        if (relPath != null && StringTools.startsWith(relPath, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = relPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
+            return InMemoryFileSystem.VIRTUAL_DRIVE + InMemoryFileSystem.fullPath(vPath);
         } else {
             return FileSystem.fullPath(relPath);
         }
     }
 
     public static function absolutePath(relPath:String):String {
-        if (relPath != null && StringTools.startsWith(relPath, "VIRTUAL::")) {
-            var vPath = relPath.substr("VIRTUAL::".length);
-            return "VIRTUAL::" + InMemoryFileSystem.absolutePath(vPath);
+        if (relPath != null && StringTools.startsWith(relPath, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = relPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
+            return InMemoryFileSystem.VIRTUAL_DRIVE + InMemoryFileSystem.absolutePath(vPath);
         } else {
             return FileSystem.absolutePath(relPath);
         }
     }
 
     public static function isDirectory(path:String):Bool {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             return InMemoryFileSystem.isDirectory(vPath);
         } else {
             return FileSystem.isDirectory(path);
@@ -64,8 +64,8 @@ class VFileSystem {
     }
 
     public static function createDirectory(path:String):Void {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFileSystem.createDirectory(vPath);
         } else {
             FileSystem.createDirectory(path);
@@ -73,8 +73,8 @@ class VFileSystem {
     }
 
     public static function deleteFile(path:String):Void {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFileSystem.deleteFile(vPath);
         } else {
             FileSystem.deleteFile(path);
@@ -82,8 +82,8 @@ class VFileSystem {
     }
 
     public static function deleteDirectory(path:String):Void {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFileSystem.deleteDirectory(vPath);
         } else {
             FileSystem.deleteDirectory(path);
@@ -91,8 +91,8 @@ class VFileSystem {
     }
 
     public static function readDirectory(path:String):Array<String> {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             return InMemoryFileSystem.readDirectory(vPath);
         } else {
             return FileSystem.readDirectory(path);
@@ -100,8 +100,8 @@ class VFileSystem {
     }
 
     public static function stat(path:String):FileStat {
-        if (path != null && StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (path != null && StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             
             var stat = InMemoryFileSystem.stat(vPath);
             return FileSystem.stat(""); 
@@ -130,6 +130,7 @@ class VNode {
 
 
 class InMemoryFileSystem {
+    public static final VIRTUAL_DRIVE = "VIRTUAL::";
     private static var root:VNode = new VNode("", true); 
     private static var cwd:String = "/"; 
 

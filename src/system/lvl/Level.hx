@@ -77,7 +77,7 @@ import plugin.util.LevelPluginUtils.EditPropsUtil;
 	 var cursor : JQuery;
 	 var cursorImage : Image;
 	 var tmpImage : Image;
-	 var zoomView = 1.;
+	 public var zoomView = 1.;
 	 var curPos : { x : Int, y : Int, xf : Float, yf : Float };
 	 var mouseDown : { rx : Int, ry : Int, w : Int, h : Int };
 	 var deleteMode : { l : LayerData };
@@ -882,7 +882,7 @@ import plugin.util.LevelPluginUtils.EditPropsUtil;
 			 if( selection == null ) cursor.hide();
 			 J(".cursorPosition").text("");
 		 });
-		 scont.mousemove(function(e) {
+		 scont.mousemove(function(e: Dynamic) {
 			 mousePos.x = Std.int(e.pageX);
 			 mousePos.y = Std.int(e.pageY);
 			 updateCursorPos();
@@ -1171,6 +1171,7 @@ import plugin.util.LevelPluginUtils.EditPropsUtil;
 	 }
  
 	 function updateCursorPos() {
+		trace("updateCursorPos: " + mousePos.x + ", " + mousePos.y);
 		 if( currentLayer == null ) return;
 		 var off = J(view.getCanvas()).parent().offset();
 		 var cxf = Std.int((mousePos.x - off.left) / zoomView) / tileSize;
@@ -1221,6 +1222,7 @@ import plugin.util.LevelPluginUtils.EditPropsUtil;
 				 marginTop : Std.int(ccy * tileSize * zoomView - border) + "px",
 			 });
 			 curPos = { x : cx, y : cy, xf : cxf, yf : cyf };
+			 trace("curPos: " + curPos);
 			 content.find(".cursorPosition").text(cx + "," + cy);
 			 if( mouseDown != null )
 				 set(Std.int(cx/mouseDown.w)*mouseDown.w + mouseDown.rx, Std.int(cy/mouseDown.h)*mouseDown.h + mouseDown.ry, false);
@@ -1769,7 +1771,7 @@ import plugin.util.LevelPluginUtils.EditPropsUtil;
 
 		var continueDraw = true;
 		for (eachPlugin in Plugins.getAs("LevelPlugin", new View<LevelPlugin>())) {
-			continueDraw = continueDraw && eachPlugin.execute(LevelPluginTrigger.BeforeDraw(this, currentLayer, x, y));
+			//continueDraw = continueDraw && eachPlugin.execute(LevelPluginTrigger.BeforeDraw(this, currentLayer, x, y));
 		}
 		if(!continueDraw){
 			return;

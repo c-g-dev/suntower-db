@@ -15,6 +15,7 @@ package ;
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+import platform.VFileSystem.InMemoryFileSystem;
 import data.Parser;
 import system.Autosave.AutosaveConfig;
 import util.MessagingCenter;
@@ -79,7 +80,8 @@ class Model {
 	}
 
 	public function getAbsPath( file : String ) {
-		return file.charAt(0) == "/" || file.charAt(1) == ":" ? file : new haxe.io.Path(prefs.curFile).dir.split("\\").join("/") + "/" + file;
+		
+		return file.startsWith(InMemoryFileSystem.VIRTUAL_DRIVE) || file.charAt(0) == "/" || file.charAt(1) == ":" ? file : new haxe.io.Path(prefs.curFile).dir.split("\\").join("/") + "/" + file;
 	}
 
 	public inline function getSheet( name : String ) {

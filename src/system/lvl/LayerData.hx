@@ -80,6 +80,32 @@ class LayerData extends LayerGfx {
 		targetObj = target;
 	}
 
+	public function getDataAt(x: Int, y: Int): Dynamic {
+		if (data == null) return null;
+		switch data {
+			case Layer(a):{
+				var i = x + y * level.width;
+				if (i < 0 || i >= a.length) return null;
+				return a[i];
+			}
+			case Objects(idCol, objs): {
+				var i = x + y * level.width;
+				if (i < 0 || i >= objs.length) return null;
+				return objs[i];
+			}
+			case Tiles(t, data): {
+				var i = x + y * level.width;
+				if (i < 0 || i >= data.length) return null;
+				return data[i];
+			}
+			case TileInstances(t, insts): {
+				var i = x + y * level.width;
+				if (i < 0 || i >= insts.length) return null;
+				return insts[i];
+			}
+		}
+	}
+
 	public function loadSheetData(sheet:Sheet) {
 		// look for default color
 		if (sheet == null && props.color == null) {

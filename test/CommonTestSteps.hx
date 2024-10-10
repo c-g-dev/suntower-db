@@ -64,12 +64,30 @@ var NewSheetPopup_Confirm: UITestStep = (test) -> {
 
 var ClickEditLevelButton= (row: Int) -> {
     return (test) -> {
-        var cell = TestUtils.getCell(0,0);
-        var editButton = cell.firstChild();
+        var cell = J("#content > table > tr:nth-child(" + Std.int(2 + row) + ") > td > input");
+        //var firstChildInCell = cell.children().get(0);
+        var editButton = cell;
         editButton.click();
         return NextStep;
     }
 } 
+
+var Click = (selector: String) -> {
+    return (test) -> {
+        var button = J(selector);
+        button.get(0).click();
+        return NextStep;
+    }
+}
+
+var SetInputValue = (selector: String, value: String) -> {
+    return (test) -> {
+        var input = J(selector);
+        input.val(value);
+        return NextStep;
+    }
+}
+
 
 var AddColumnPopup: UITestStep = (test) -> {
     @:privateAccess test.main.newColumn();

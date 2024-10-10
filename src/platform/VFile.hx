@@ -1,5 +1,6 @@
 package platform;
 
+import platform.VFileSystem.InMemoryFileSystem;
 import platform.VFileSystem.InMemoryFile;
 import sys.io.File;
 import sys.io.FileInput;
@@ -13,8 +14,8 @@ class VFile {
 
     public static function getContent(path:String):String {
         if (path == null) throw 'Invalid path';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             return InMemoryFile.getContent(vPath);
         } else {
             return File.getContent(path);
@@ -23,8 +24,8 @@ class VFile {
 
     public static function saveContent(path:String, content:String):Void {
         if (path == null || content == null) throw 'Invalid arguments';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFile.saveContent(vPath, content);
         } else {
             File.saveContent(path, content);
@@ -33,8 +34,8 @@ class VFile {
 
     public static function getBytes(path:String):Bytes {
         if (path == null) throw 'Invalid path';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             return InMemoryFile.getBytes(vPath);
         } else {
             return File.getBytes(path);
@@ -43,8 +44,8 @@ class VFile {
 
     public static function saveBytes(path:String, bytes:Bytes):Void {
         if (path == null || bytes == null) throw 'Invalid arguments';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFile.saveBytes(vPath, bytes);
         } else {
             File.saveBytes(path, bytes);
@@ -53,8 +54,8 @@ class VFile {
 
     public static function read(path:String, binary:Bool = true):VFileInput {
         if (path == null) throw 'Invalid path';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             var input = InMemoryFile.read(vPath, binary); // Returns InMemoryFileInput
             return new VFileInput(input);
         } else {
@@ -65,8 +66,8 @@ class VFile {
 
     public static function write(path:String, binary:Bool = true):VFileOutput {
         if (path == null) throw 'Invalid path';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             var output = InMemoryFile.write(vPath, binary);
             return new VFileOutput(output);
         } else {
@@ -77,8 +78,8 @@ class VFile {
 
     public static function append(path:String, binary:Bool = true):VFileOutput {
         if (path == null) throw 'Invalid path';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             var output = InMemoryFile.append(vPath, binary);
             return new VFileOutput(output);
         } else {
@@ -89,8 +90,8 @@ class VFile {
 
     public static function update(path:String, binary:Bool = true):VFileOutput {
         if (path == null) throw 'Invalid path';
-        if (StringTools.startsWith(path, "VIRTUAL::")) {
-            var vPath = path.substr("VIRTUAL::".length);
+        if (StringTools.startsWith(path, InMemoryFileSystem.VIRTUAL_DRIVE)) {
+            var vPath = path.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             var output = InMemoryFile.update(vPath, binary);
             return new VFileOutput(output);
         } else {
@@ -102,24 +103,24 @@ class VFile {
     public static function copy(srcPath:String, dstPath:String):Void {
         if (srcPath == null || dstPath == null) throw 'Invalid arguments';
 
-        var isVirtualSrc = StringTools.startsWith(srcPath, "VIRTUAL::");
-        var isVirtualDst = StringTools.startsWith(dstPath, "VIRTUAL::");
+        var isVirtualSrc = StringTools.startsWith(srcPath, InMemoryFileSystem.VIRTUAL_DRIVE);
+        var isVirtualDst = StringTools.startsWith(dstPath, InMemoryFileSystem.VIRTUAL_DRIVE);
 
         if (isVirtualSrc && isVirtualDst) {
-            var vSrcPath = srcPath.substr("VIRTUAL::".length);
-            var vDstPath = dstPath.substr("VIRTUAL::".length);
+            var vSrcPath = srcPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
+            var vDstPath = dstPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFile.copy(vSrcPath, vDstPath);
         } else if (!isVirtualSrc && !isVirtualDst) {
             File.copy(srcPath, dstPath);
         } else if (isVirtualSrc && !isVirtualDst) {
             // Copy from virtual file to real file
-            var vSrcPath = srcPath.substr("VIRTUAL::".length);
+            var vSrcPath = srcPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             var bytes = InMemoryFile.getBytes(vSrcPath);
             File.saveBytes(dstPath, bytes);
         } else if (!isVirtualSrc && isVirtualDst) {
             // Copy from real file to virtual file
             var bytes = File.getBytes(srcPath);
-            var vDstPath = dstPath.substr("VIRTUAL::".length);
+            var vDstPath = dstPath.substr(InMemoryFileSystem.VIRTUAL_DRIVE.length);
             InMemoryFile.saveBytes(vDstPath, bytes);
         }
     }

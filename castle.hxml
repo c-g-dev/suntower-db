@@ -16,6 +16,8 @@
 
 -lib ludi-commons
 
+--resource test_tileset.png@test_tileset
+
 --macro macros.NativeMappingMacro.init()
 
 -D lz4js

@@ -89,7 +89,7 @@ import haxe.Json;
 	 var lastSave : Float;
 	 var colProps : { sheet : String, ref : Column, index : Null<Int> };
 	 var levels : Array<Level>;
-	 var level : Level;
+	 public var level : Level;
 	 var mcompress : MenuItem;
 	 var pages : JqPages;
  

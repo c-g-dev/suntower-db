@@ -1,5 +1,6 @@
 package ;
 
+import tests.LevelTest;
 import util.Notifier;
 import tests.MultisheetTest.MultiSheetSmokeTest;
 import tests.SmokeTest;
@@ -19,6 +20,7 @@ abstract class UITest {
     public var main: Main;
     public var database: DatabaseTestUtils;
     public var description: String;
+    public var context: Map<String, Dynamic> = [];
 
     public function new(description: String, main: Main) {
         this.main = main;    
@@ -49,6 +51,15 @@ abstract class UITest {
                     currentStep++;
                     return Delay;
                 }
+                case DelayUntil(predicate):{ 
+                    if(!predicate()) {
+                        trace("predicate failed, delaying");
+                        return Delay;
+                    }
+                    trace("predicate succeeded, moving to next step");
+                    currentStep++;
+                    return NextStep;
+                }
                 case Success: return Success;
                 case Failure(msg): return Failure(msg);
                 case Error(msg): return Error(msg);
@@ -67,6 +78,7 @@ enum UITestCoroutineResult {
     Delay;
     NextStep;
     Success;
+    DelayUntil(predicate: Void -> Bool);
     Failure(msg: String);
     Error(msg: String);
 }
@@ -87,6 +99,7 @@ class UITestRunner {
         currentTestIndex = -1;
         addTest(new SmokeTest(main));
         addTest(new MultiSheetSmokeTest(main));
+        addTest(new LevelTest(main));
     }
 
     
@@ -105,7 +118,7 @@ class UITestRunner {
                 if (currentTest != null) {
                     var result:UITestCoroutineResult = currentTest.run();
                     switch (result) {
-                        case Delay | NextStep:
+                        case Delay | NextStep | DelayUntil(_):
                             
                         case Success:
                             
@@ -178,8 +191,16 @@ class StepsMerger {
             
             var result = stepFunc(test);
             switch (result) {
+                case DelayUntil(predicate):{ 
+                    if(!predicate()) {
+                        trace("predicate failed, delaying");
+                        return Delay;
+                    }
+                    trace("predicate succeeded, moving to next step");
+                    currentStepIndex++;
+                    return NextStep;
+                }
                 case NextStep:
-                    
                     currentStepIndex++;
                     trace("Moving on to step " + currentStepIndex);
                     return Delay;
