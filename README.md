@@ -55,4 +55,5 @@ var export = [menuPlugin];
 
 # Guides
 <a href="https://github.com/c-g-dev/suntower-db/wiki/Tutorial-%E2%80%90-Creating-Plugins"><strong>How to write plugins</strong></a>
+<br/>
 <a href="https://github.com/c-g-dev/suntower-db/wiki/Custom-Sheet-Views-%E2%80%90-Tutorial"><strong>How to write custom sheet views</strong></a>
