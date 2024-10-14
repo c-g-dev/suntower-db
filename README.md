@@ -24,6 +24,10 @@ CastleDB - Suntower Edition is a reimplementation of the legacy CastleDB static 
 <br/>
 <br/>
 
+## v1.0.0 Showcase
+
+[![v1.0.0 Showcase](https://img.youtube.com/vi/l5dOpeNrCrA/0.jpg)](https://www.youtube.com/watch?v=l5dOpeNrCrA)
+
 ## Plugin Example
 
 Adding a "Duplicate" option to the right-click context menu of sheet rows.
